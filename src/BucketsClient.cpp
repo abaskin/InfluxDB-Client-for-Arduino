@@ -36,26 +36,25 @@ enum class PropType {
   Number
 };
 
-static String findProperty(const char *prop,const String &json, PropType type = PropType::String);
+static std::string findProperty(const char *prop,const std::string &json, PropType type = PropType::String);
 
-static String findProperty(const char *prop,const String &json, PropType type) {
+static std::string findProperty(const char *prop,const std::string &json, PropType type) {
   INFLUXDB_CLIENT_DEBUG("[D] Searching for %s in %s\n", prop, json.c_str());
   int propLen = strlen_P(propTemplate)+strlen(prop)-2;
-  char *propSearch = new char[propLen+1];
-  sprintf_P(propSearch, propTemplate, prop);
-  int i = json.indexOf(propSearch);
-  delete [] propSearch;
-  if(i>-1) {
+  std::unique_ptr<char[]> propSearch { new char[propLen+1] };
+  sprintf_P(propSearch.get(), propTemplate, prop);
+  auto i = json.find(propSearch.get());
+  if (i != std::string::npos) {
     INFLUXDB_CLIENT_DEBUG("[D]   Found at %d\n", i);
     switch(type) {
       case PropType::String:
-        i = json.indexOf("\"", i+propLen);
-        if(i>-1) {
-         INFLUXDB_CLIENT_DEBUG("[D]    Found starting \" at %d\n", i);
-          int e = json.indexOf("\"", i+1);
-          if(e>-1) {
+        i = json.find("\"", i + propLen);
+        if (i != std::string::npos) {
+          INFLUXDB_CLIENT_DEBUG("[D]    Found starting \" at %d\n", i);
+          auto  e = json.find("\"", i + 1);
+          if (e != std::string::npos) {
             INFLUXDB_CLIENT_DEBUG("[D]    Found ending \" at %d\n", e);
-            return json.substring(i+1, e);
+            return json.substr(i + 1, e);
           }
         }
       break;
@@ -65,10 +64,10 @@ static String findProperty(const char *prop,const String &json, PropType type) {
           i++;
         }
         INFLUXDB_CLIENT_DEBUG("[D]    Found beginning of number at %d\n", i);
-        int e = json.indexOf(",", i+1);
-        if(e>-1) {
+        auto e = json.find(",", i + 1);
+        if (e != std::string::npos) {
           INFLUXDB_CLIENT_DEBUG("[D]    Found , at %d\n", e);
-          return json.substring(i, e);
+          return json.substr(i, e);
         }
       break;
     }
@@ -111,17 +110,15 @@ Bucket::Data::Data(const char *id, const char *name, const uint32_t expire) {
 }
 
 Bucket::Data::~Data() {
-  delete [] id;
-  delete [] name;
 }
 
 
 const char *toStringTmplt PROGMEM = "Bucket: ID %s, Name %s, expire %u";
-String Bucket::toString() const {
-  int len = strlen_P(toStringTmplt) + (_data?strlen(_data->name):0) + (_data?strlen(_data->id):0) + 10 + 1; //10 is maximum length of string representation of expire
+std::string Bucket::toString() const {
+  int len = strlen_P(toStringTmplt) + (_data?!_data->name.empty():0) + (_data?_data->id.empty():0) + 10 + 1; //10 is maximum length of string representation of expire
   char *buff = new char[len];
   sprintf_P(buff, toStringTmplt, getID(), getName(), getExpire());
-  String ret = buff;
+  std::string ret = buff;
   return ret;
 }
 
@@ -149,20 +146,20 @@ BucketsClient &BucketsClient::operator=(std::nullptr_t) {
   return *this;
 }
 
-String BucketsClient::getOrgID(const char *org) {
+std::string BucketsClient::getOrgID(const char *org) {
   if(!_data) {
     return "";
   }
   if(isValidID(org)) {
     return org;
   }
-  String url = _data->pService->getServerAPIURL();
+  std::string url = _data->pService->getServerAPIURL();
   url += "orgs?org=";
   url += urlEncode(org);
-  String id;
+  std::string id;
   INFLUXDB_CLIENT_DEBUG("[D] getOrgID: url %s\n", url.c_str());
   _data->pService->doGET(url.c_str(), 200, [&id](HTTPClient *client){
-    id = findProperty("id",client->getString());
+    id = findProperty("id",client->getString().c_str());
     return true;
   });
   return id;
@@ -178,7 +175,7 @@ static const char *CreateBucketTemplate PROGMEM = "{\"name\":\"%s\",\"orgID\":\"
 Bucket BucketsClient::createBucket(const char *bucketName, uint32_t expiresSec) {
   Bucket b;
   if(_data) {
-    String orgID = getOrgID(_data->pConnInfo->org.c_str());
+    std::string orgID = getOrgID(_data->pConnInfo->org.c_str());
     
     if(!orgID.length()) {
       return b;
@@ -190,21 +187,20 @@ Bucket BucketsClient::createBucket(const char *bucketName, uint32_t expiresSec) 
       e /=10;
     } while(e > 0);
     int len = strlen_P(CreateBucketTemplate) + strlen(bucketName) + orgID.length() + expireLen+1;
-    char *body = new char[len];
-    sprintf_P(body, CreateBucketTemplate, bucketName, orgID.c_str(), expiresSec);
-    String url = _data->pService->getServerAPIURL();
+    std::unique_ptr<char[]> body { new char[len] };
+    sprintf_P(body.get(), CreateBucketTemplate, bucketName, orgID.c_str(), expiresSec);
+    std::string url = _data->pService->getServerAPIURL();
     url += "buckets";
     INFLUXDB_CLIENT_DEBUG("[D] CreateBucket: url %s, body %s\n", url.c_str(), body);
-    _data->pService->doPOST(url.c_str(), body, "application/json", 201, [&b](HTTPClient *client){
-      String resp = client->getString();
-      String id = findProperty("id", resp);
-      String name = findProperty("name", resp);
-      String expireStr = findProperty("everySeconds", resp, PropType::Number);
+    _data->pService->doPOST(url.c_str(), body.get(), "application/json", 201, [&b](HTTPClient *client){
+      std::string resp = client->getString().c_str();
+      std::string id = findProperty("id", resp);
+      std::string name = findProperty("name", resp);
+      std::string expireStr = findProperty("everySeconds", resp, PropType::Number);
       uint32_t expire = strtoul(expireStr.c_str(), nullptr, 10);
       b = Bucket(id.c_str(), name.c_str(), expire);
       return true;
     });
-    delete [] body;
   }
   return b;
 }
@@ -214,7 +210,7 @@ bool BucketsClient::deleteBucket(const char *id) {
     
     return false;
   }
-  String url = _data->pService->getServerAPIURL();
+  std::string url = _data->pService->getServerAPIURL();
   url += "buckets/";
   url += id;
   INFLUXDB_CLIENT_DEBUG("[D] deleteBucket: url %s\n", url.c_str());
@@ -224,16 +220,16 @@ bool BucketsClient::deleteBucket(const char *id) {
 Bucket BucketsClient::findBucket(const char *bucketName) {
   Bucket b;
   if(_data) {
-    String url = _data->pService->getServerAPIURL();
+    std::string url = _data->pService->getServerAPIURL();
     url += "buckets?name=";
     url += urlEncode(bucketName);
     INFLUXDB_CLIENT_DEBUG("[D] findBucket: url %s\n", url.c_str());
     _data->pService->doGET(url.c_str(), 200, [&b](HTTPClient *client){
-      String resp = client->getString();
-      String id = findProperty("id", resp);
+      std::string resp { client->getString().c_str() };
+      auto id { findProperty("id", resp) };
       if(id.length()) {
-        String name = findProperty("name", resp);
-        String expireStr = findProperty("everySeconds", resp, PropType::Number);
+        std::string name = findProperty("name", resp);
+        std::string expireStr = findProperty("everySeconds", resp, PropType::Number);
         uint32_t expire = strtoul(expireStr.c_str(), nullptr, 10);
         b = Bucket(id.c_str(), name.c_str(), expire);
       }

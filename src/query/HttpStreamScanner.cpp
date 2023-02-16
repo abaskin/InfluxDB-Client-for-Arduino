@@ -32,18 +32,18 @@
 #include "util/helpers.h"
 
 HttpStreamScanner::HttpStreamScanner(HTTPClient *client, bool chunked)
-{
-    _client = client;
-    _stream = client->getStreamPtr();
-    _chunked = chunked;
-    _chunkHeader = chunked;
-    _len = client->getSize();
-    INFLUXDB_CLIENT_DEBUG("[D] HttpStreamScanner: chunked: %s, size: %d\n", bool2string(_chunked), _len);
+    : _client(client),
+      _stream(client->getStreamPtr()),
+      _len(client->getSize()),
+      _chunked(chunked),
+      _chunkHeader(chunked) {
+  INFLUXDB_CLIENT_DEBUG("[D] HttpStreamScanner: chunked: %s, size: %d\n",
+                        bool2string(_chunked), _len);
 }
 
 bool HttpStreamScanner::next() {
     while(_client->connected() && (_len > 0 || _len == -1)) {
-        _line = _stream->readStringUntil('\n');
+        _line = _stream->readStringUntil('\n').c_str();
         INFLUXDB_CLIENT_DEBUG("[D] HttpStreamScanner: line: %s\n", _line.c_str());
         ++_linesNum;
         int lineLen = _line.length();
@@ -52,7 +52,7 @@ bool HttpStreamScanner::next() {
             return false;
         } 
         int r = lineLen +1; //+1 for terminating \n
-        _line.trim(); //remove \r
+        trim(_line); //remove \r
         if(!_chunked || !_chunkHeader) {
             _read += r;
             if(_lastChunkLine.length() > 0) { //fix broken line
@@ -101,4 +101,3 @@ bool HttpStreamScanner::next() {
 void HttpStreamScanner::close() {
     _client->end();
 }
-

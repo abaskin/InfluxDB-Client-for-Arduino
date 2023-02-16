@@ -74,24 +74,24 @@ void setup() {
   // Check server connection
   if (client.validateConnection()) {
     Serial.print("Connected to InfluxDB: ");
-    Serial.println(client.getServerUrl());
+    Serial.println(client.getServerUrl().c_str());
   } else {
     Serial.print("InfluxDB connection failed: ");
-    Serial.println(client.getLastErrorMessage());
+    Serial.println(client.getLastErrorMessage().c_str());
   }
 }
 
 void loop() {
   // Construct a Flux query
   // Query will list RSSI for last 24 hours for each connected WiFi network of this device type
-  String query = "from(bucket: \"" INFLUXDB_BUCKET "\") |> range(start: -24h) |> filter(fn: (r) => r._measurement == \"wifi_status\" and r._field == \"rssi\"";
+  std::string query = "from(bucket: \"" INFLUXDB_BUCKET "\") |> range(start: -24h) |> filter(fn: (r) => r._measurement == \"wifi_status\" and r._field == \"rssi\"";
   query += " and r.device == \""  DEVICE  "\")";
 
   Serial.println("==== List results ====");
   
   // Print composed query
   Serial.print("Querying with: ");
-  Serial.println(query);
+  Serial.println(query.c_str());
 
   // Send query to the server and get result
   FluxQueryResult result = client.query(query);
@@ -103,15 +103,15 @@ void loop() {
       Serial.println("Table:");
       Serial.print("  ");
       // Print all columns name
-      for(String &name: result.getColumnsName()) {
-        Serial.print(name);
+      for(auto &name: result.getColumnsName()) {
+        Serial.print(name.c_str());
         Serial.print(",");
       }
       Serial.println();
       Serial.print("  ");
       // Print all columns datatype
-      for(String &tp: result.getColumnsDatatype()) {
-        Serial.print(tp);
+      for(auto &tp: result.getColumnsDatatype()) {
+        Serial.print(tp.c_str());
         Serial.print(",");
       }
       Serial.println();
@@ -122,7 +122,7 @@ void loop() {
       // Check whether the value is null
       if(!val.isNull()) {
         // Use raw string, unconverted value
-        Serial.print(val.getRawValue());
+        Serial.print(val.getRawValue().c_str());
       } else {
         // Print null value substite
         Serial.print("<null>");  
@@ -135,7 +135,7 @@ void loop() {
   // Check if there was an error
   if(result.getError().length() > 0) {
     Serial.print("Query result error: ");
-    Serial.println(result.getError());
+    Serial.println(result.getError().c_str());
   }
 
   // Close the result

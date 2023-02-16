@@ -27,14 +27,13 @@
 #include "CsvReader.h"
 
 CsvReader::CsvReader(HttpStreamScanner *scanner) {
-    _scanner = scanner;
+    _scanner.reset(scanner);
 }
 
 CsvReader::~CsvReader() {
-    delete _scanner;
 }
 
-std::vector<String> CsvReader::getRow() {
+std::vector<std::string> CsvReader::getRow() {
     return _row;
 };
 
@@ -44,7 +43,7 @@ void CsvReader::close() {
 }
 
 void CsvReader::clearRow() {
-    std::for_each(_row.begin(), _row.end(), [](String &value){ value = (const char *)nullptr; });
+    // std::for_each(_row.begin(), _row.end(), [](std::string &value){ value = (const char *)nullptr; });
     _row.clear();
 }
 
@@ -61,47 +60,52 @@ bool CsvReader::next() {
           _error =  _scanner->getError();
          return false;
      }
-    String line = _scanner->getLine();
     CsvParsingState state = CsvParsingState::UnquotedField;
-    std::vector<String> fields {""};
+    std::vector<std::string> fields {};
     size_t i = 0; // index of the current field
-    for (char c : line) {
-        switch (state) {
-            case CsvParsingState::UnquotedField:
-                switch (c) {
-                    case ',': // end of field
-                              fields.push_back(""); i++;
-                              break;
-                    case '"': state = CsvParsingState::QuotedField;
-                              break;
-                    default:  fields[i] += c;
-                              break; 
-                }
-                break;
-            case CsvParsingState::QuotedField:
-                switch (c) {
-                    case '"': state = CsvParsingState::QuotedQuote;
-                              break;
-                    default:  fields[i] += c;
-                              break; 
-                }
-                break;
-            case CsvParsingState::QuotedQuote:
-                switch (c) {
-                    case ',': // , after closing quote
-                              fields.push_back(""); i++;
-                              state = CsvParsingState::UnquotedField;
-                              break;
-                    case '"': // "" -> "
-                              fields[i] += '"';
-                              state = CsvParsingState::QuotedField;
-                              break;
-                    default:  // end of quote
-                              state = CsvParsingState::UnquotedField;
-                              break; 
-                }
-                break;
-        }
+    for (auto& c : _scanner->getLine()) {
+         switch (state) {
+           case CsvParsingState::UnquotedField:
+             switch (c) {
+               case ',':  // end of field
+                 fields.push_back("");
+                 i++;
+                 break;
+               case '"':
+                 state = CsvParsingState::QuotedField;
+                 break;
+               default:
+                 fields[i].push_back(c);
+                 break;
+             }
+             break;
+           case CsvParsingState::QuotedField:
+             switch (c) {
+               case '"':
+                 state = CsvParsingState::QuotedQuote;
+                 break;
+               default:
+                 fields[i].push_back(c);
+                 break;
+             }
+             break;
+           case CsvParsingState::QuotedQuote:
+             switch (c) {
+               case ',':  // , after closing quote
+                 fields.push_back("");
+                 i++;
+                 state = CsvParsingState::UnquotedField;
+                 break;
+               case '"':  // "" -> "
+                 fields[i].push_back('"');
+                 state = CsvParsingState::QuotedField;
+                 break;
+               default:  // end of quote
+                 state = CsvParsingState::UnquotedField;
+                 break;
+             }
+             break;
+         }
     }
     _row = fields;
     return true;

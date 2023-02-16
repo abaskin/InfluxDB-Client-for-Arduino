@@ -30,10 +30,10 @@
 void InfluxData::setTimestamp(long int seconds) 
 { 
     _data->timestamp = timeStampToString(seconds,9);
-    strcat(_data->timestamp, "000000000"); 
+    _data->timestamp.append("000000000"); 
 }
 
- String InfluxData::toString() const { 
-    String t; 
+ std::string InfluxData::toString() const { 
+    std::string t; 
     return createLineProtocol(t); 
 }

@@ -26,6 +26,7 @@
 */
 #include "helpers.h"
 
+
 void timeSync(const char *tzInfo, const char* ntpServer1, const char* ntpServer2, const char* ntpServer3) {
   // Accurate time is necessary for certificate validion
 
@@ -68,38 +69,28 @@ unsigned long long getTimeStamp(struct timeval *tv, int secFracDigits) {
     return tsVal;
 }
 
-char *timeStampToString(unsigned long long timestamp, int extraCharsSpace) {
+std::string timeStampToString(unsigned long long timestamp, int extraCharsSpace) {
     //22 is max long long string length (18)
-    char *buff = new char[22+extraCharsSpace+1];
+    char buff[22+extraCharsSpace+1];
     snprintf(buff, 22, "%llu", timestamp);
     return buff;
 }
 
 static char escapeChars[] = "=\r\n\t ,";
 
-char *escapeKey(const String &key, bool escapeEqual) {
-    char c,*ret,*d,*s = (char *)key.c_str();
-    int n = 0;
-    while ((c = *s++)) {
-        if(strchr(escapeEqual?escapeChars:escapeChars+1, c)) {
-            n++;
-        }
-    }
-    ret = new char[key.length()+n+1];
-    s = (char *)key.c_str();
-    d = ret;
-    while ((c = *s++)) {
-       if (strchr(escapeEqual?escapeChars:escapeChars+1,c)) {
-           *d++ = '\\';
+std::string escapeKey(const std::string &key, bool escapeEqual) {
+    std::string ret;
+    for (auto& c : key) {
+       if (strchr(escapeEqual ? escapeChars:escapeChars+1, c)) {
+           ret.push_back('\\');
       }
-      *d++ = c;
+      ret.push_back(c);
    }
-   *d = 0;
    return ret;
 }
 
-String escapeValue(const char *value) {
-    String ret;
+std::string escapeValue(const char *value) {
+    std::string ret;
     int len = strlen_P(value);
     ret.reserve(len+7); //5 is estimate of max chars needs to escape,
     ret += '"';
@@ -126,7 +117,7 @@ static char hex_digit(char c) {
     return "0123456789ABCDEF"[c & 0x0F];
 }
 
-String urlEncode(const char* src) {
+std::string urlEncode(const char* src) {
     int n=0;
     char c,*s = (char *)src;
     while ((c = *s++)) {
@@ -134,7 +125,7 @@ String urlEncode(const char* src) {
             n++;
         }
     }
-    String ret;
+    std::string ret;
     ret.reserve(strlen(src)+2*n+1);
     s = (char *)src;
     while ((c = *s++)) {
@@ -185,4 +176,22 @@ size_t strLen(const char *str) {
         return 0;
     }
     return strlen(str);
+}
+
+bool endsWith(std::string str, std::string suffix) {
+    return str.size() >= suffix.size() &&
+           0 == str.compare(str.size() - suffix.size(), suffix.size(), suffix);
+}
+
+bool startsWith(std::string str, std::string prefix) {
+    return str.size() >= prefix.size() &&
+           0 == str.compare(0, prefix.size(), prefix);
+}
+
+void trim(std::string& str) {
+    str.erase(
+        std::find_if(str.rbegin(), str.rend(),
+                     [](unsigned char ch) { return !std::isspace(ch); })
+            .base(),
+        str.end());
 }

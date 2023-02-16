@@ -56,10 +56,10 @@ void testClient() {
   // Check server connection
   if (client.validateConnection()) {
     Serial.print("Connected to InfluxDB: ");
-    Serial.println(client.getServerUrl());
+    Serial.println(client.getServerUrl().c_str());
   } else {
     Serial.print("InfluxDB connection failed: ");
-    Serial.println(client.getLastErrorMessage());
+    Serial.println(client.getLastErrorMessage().c_str());
     return;
   }
 
@@ -81,11 +81,11 @@ void testClient() {
   if(!b) {
     // some error occurred
     Serial.print("Bucket creating error: ");
-    Serial.println(buckets.getLastErrorMessage());
+    Serial.println(buckets.getLastErrorMessage().c_str());
     return;
   }
   Serial.print("Created bucket: ");
-  Serial.println(b.toString());
+  Serial.println(b.toString().c_str());
   
   int numPoints = 10;
   // Write some points
@@ -96,11 +96,11 @@ void testClient() {
     point.addField("humidity", random(10, 90));
     if(!client.writePoint(point)) {
       Serial.print("Write error: ");
-      Serial.println(client.getLastErrorMessage());
+      Serial.println(client.getLastErrorMessage().c_str());
     }
   }
   // verify written points
-  String query= "from(bucket: \"" INFLUXDB_BUCKET "\") |> range(start: -1h) |> pivot(rowKey:[\"_time\"],columnKey: [\"_field\"],valueColumn: \"_value\") |> count(column: \"humidity\")";
+  std::string query { "from(bucket: \"" INFLUXDB_BUCKET "\") |> range(start: -1h) |> pivot(rowKey:[\"_time\"],columnKey: [\"_field\"],valueColumn: \"_value\") |> count(column: \"humidity\")" };
   FluxQueryResult result = client.query(query);
   // We expect one row
   if(result.next()) { 
@@ -118,7 +118,7 @@ void testClient() {
     result.next();
   } else {
     Serial.print("Query error: ");
-    Serial.println(result.getError());
+    Serial.println(result.getError().c_str());
   };
   result.close();
       

@@ -33,6 +33,8 @@
 # include <HTTPClient.h>
 #endif //ESP8266
 
+#include <string>
+
 /** 
  * HttpStreamScanner parses response stream from  HTTPClient for lines.
  * By repeatedly calling next() it searches for new line.
@@ -44,21 +46,21 @@ public:
     HttpStreamScanner(HTTPClient *client, bool chunked);
     bool next();
     void close();
-    const String &getLine() const { return _line; }
+    std::string getLine() const { return _line; };
     int getError() const { return _error; }
     int getLinesNum() const {return _linesNum; }
 private:
     HTTPClient *_client;
     Stream *_stream = nullptr;
     int _len;
-    String _line;
-    int _linesNum= 0;
-    int _read = 0;
     bool _chunked;
     bool _chunkHeader;
-    int _chunkLen = 0;
-    String _lastChunkLine;
-    int _error = 0;
+    int _chunkLen { 0 };
+    std::string _lastChunkLine;
+    std::string _line;
+    int _linesNum { 0 };
+    int _read = { 0 };
+    int _error = { 0 };
 };
 
 #endif //#_HTTP_STREAM_SCANNER_

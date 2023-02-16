@@ -32,7 +32,7 @@
  * @param host the InfluxDb host
  * @param port the InfluxDb port
  */
-Influxdb::Influxdb(String host, uint16_t port) {
+Influxdb::Influxdb(std::string host, uint16_t port) {
   if(port == 443) {
     // this happens usualy when influxdb is behind fw/proxy. Mostly, when influxdb is switched to https, the port remains the same (8086)
     // port number shouldn't be qualificator for secure connection, either scheme or a flag
@@ -40,7 +40,7 @@ Influxdb::Influxdb(String host, uint16_t port) {
   } else {
     _connInfo.serverUrl = "http://";
   }
-  _connInfo.serverUrl += host + ":" + String(port);
+  _connInfo.serverUrl += host + ":" + std::to_string(port);
   _connInfo.dbVersion = 1;
 }
 
@@ -48,14 +48,14 @@ Influxdb::Influxdb(String host, uint16_t port) {
  * Set the database to be used.
  * @param db the Influx Database to be written to.
  */
-void Influxdb::setDb(String db) {
+void Influxdb::setDb(std::string db) {
   _connInfo.bucket = db;
 }
 
 /**
  * Set the database to be used with authentication.
  */
-void Influxdb::setDbAuth(String db, String user, String pass) {
+void Influxdb::setDbAuth(std::string db, std::string user, std::string pass) {
   _connInfo.bucket = db;
   _connInfo.user = user;
   _connInfo.password = pass;
@@ -65,7 +65,7 @@ void Influxdb::setDbAuth(String db, String user, String pass) {
  * Set the Bucket to be used v2.0 ONLY.
  * @param bucket the InfluxDB Bucket which must already exist
  */
-void Influxdb::setBucket(String bucket) {
+void Influxdb::setBucket(std::string bucket) {
   _connInfo.bucket = bucket;
 }
 
@@ -74,16 +74,16 @@ void Influxdb::setBucket(String bucket) {
  * @param port both v1.x and v3 use 8086
  */
 void Influxdb::setPort(uint16_t port){
-  int b = _connInfo.serverUrl.indexOf(":",5);
-  if(b > 0) {
-    _connInfo.serverUrl = _connInfo.serverUrl.substring(0, b+1) + String(port);
+  auto b { _connInfo.serverUrl.find(":",5) };
+  if(b != std::string::npos) {
+    _connInfo.serverUrl = _connInfo.serverUrl.substr(0, b+1) + std::to_string(port);
   }
 }
 /**
  * Set the Organization to be used v2.0 ONLY
  * @param org the Name of the organization unit to use which must already exist
  */
-void Influxdb::setOrg(String org){
+void Influxdb::setOrg(std::string org){
   _connInfo.org = org;
 }
 
@@ -91,7 +91,7 @@ void Influxdb::setOrg(String org){
  * Set the authorization token v2.0 ONLY
  * @param token the Auth Token from InfluxDBv2 *required*
  */
-void Influxdb::setToken(String token){
+void Influxdb::setToken(std::string token){
   _connInfo.authToken = token;
 }
 
@@ -152,6 +152,6 @@ boolean Influxdb::write(InfluxData data) {
  * https://github.com/esp8266/Arduino/blob/cc0bfa04d401810ed3f5d7d01be6e88b9011997f/libraries/ESP8266HTTPClient/src/ESP8266HTTPClient.h#L44-L55
  * for a list of error codes.
  */
-boolean Influxdb::write(String data) {
+boolean Influxdb::write(std::string data) {
   return writeRecord(data);
 }

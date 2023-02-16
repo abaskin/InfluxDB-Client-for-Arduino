@@ -29,6 +29,7 @@
 
 #include <HTTPService.h>
 #include <memory>
+#include <string>
 
 class BucketsClient;
 class Test;
@@ -52,22 +53,22 @@ friend class Test;
     // Clean bucket 
     ~Bucket();
     // Returns Bucket ID
-    const char *getID() const { return _data?_data->id:nullptr; }
+    const char *getID() const { return _data ? _data->id.c_str() : nullptr; }
     // Retuns bucket name
-    const char *getName() const { return _data?_data->name:nullptr; }
+    const char *getName() const { return _data ? _data->name.c_str() : nullptr; }
     // Retention policy in sec, 0 - inifinite
     uint32_t getExpire() const { return _data?_data->expire:0; }
     // Checks if it is null instance
     bool isNull() const { return _data == nullptr; }
     // String representation
-    String toString() const;
+    std::string toString() const;
   private:
     class Data {
       public:
         Data(const char *id, const char *name, const uint32_t expire);
         ~Data();
-        char *id;
-        char *name;
+        std::string id;
+        std::string name;
         uint32_t expire;
       };
     std::shared_ptr<Data> _data;
@@ -103,13 +104,13 @@ friend class E2ETest;
     // Delete a bucket with given id. Use findBucket to get a bucket with id.
     bool deleteBucket(const char *id);
     // Returns last error message 
-    String getLastErrorMessage() { return _data?_data->pConnInfo->lastError:""; }
+    std::string getLastErrorMessage() { return _data?_data->pConnInfo->lastError:""; }
     // check validity
     bool isNull() const { return _data == nullptr; }
   protected:
     BucketsClient();
     BucketsClient(ConnectionInfo *pConnInfo, HTTPService *service);
-    String getOrgID(const char *org);
+    std::string getOrgID(const char *org);
   private:    
     class Data {
       public:

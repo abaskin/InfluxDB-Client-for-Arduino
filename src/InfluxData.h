@@ -28,10 +28,10 @@
 
 class InfluxData : public Point {
  public:
-  InfluxData(const String &measurement) : Point(measurement) {}
+  InfluxData(const std::string &measurement) : Point(measurement) {}
 
-  void addValue(const String &key, float value) { addField(key, value); }
-  void addValueString(const String &key, String value) { addField(key, value); }
+  void addValue(const std::string &key, float value) { addField(key, value); }
+  void addValueString(const std::string &key, std::string value) { addField(key, value); }
   void setTimestamp(long int seconds);
-  String toString() const;
+  std::string toString() const;
 };

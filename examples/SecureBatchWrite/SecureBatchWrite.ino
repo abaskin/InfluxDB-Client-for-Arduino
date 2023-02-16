@@ -25,6 +25,8 @@ ESP8266WiFiMulti wifiMulti;
 #include <InfluxDbClient.h>
 #include <InfluxDbCloud.h>
 
+#include <string>
+
 // WiFi AP SSID
 #define WIFI_SSID "SSID"
 // WiFi password
@@ -79,7 +81,7 @@ void setup() {
 
   // Add tags
   sensorStatus.addTag("device", DEVICE);
-  sensorStatus.addTag("SSID", WiFi.SSID());
+  sensorStatus.addTag("SSID", WiFi.SSID().c_str());
 
   // Alternatively, set insecure connection to skip server certificate validation 
   //client.setInsecure();
@@ -91,10 +93,10 @@ void setup() {
   // Check server connection
   if (client.validateConnection()) {
     Serial.print("Connected to InfluxDB: ");
-    Serial.println(client.getServerUrl());
+    Serial.println(client.getServerUrl().c_str());
   } else {
     Serial.print("InfluxDB connection failed: ");
-    Serial.println(client.getLastErrorMessage());
+    Serial.println(client.getLastErrorMessage().c_str());
   }
 
   // Enable messages batching and retry buffer
@@ -117,15 +119,15 @@ void loop() {
     for (int i = 0; i < networks; i++) {
       Point sensorNetworks("wifi_networks");
       sensorNetworks.addTag("device", DEVICE);
-      sensorNetworks.addTag("SSID", WiFi.SSID(i));
-      sensorNetworks.addTag("channel", String(WiFi.channel(i)));
-      sensorNetworks.addTag("open", String(WiFi.encryptionType(i) == WIFI_AUTH_OPEN));
+      sensorNetworks.addTag("SSID", WiFi.SSID(i).c_str());
+      sensorNetworks.addTag("channel", std::to_string(WiFi.channel(i)));
+      sensorNetworks.addTag("open", (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "true" : "false");
       sensorNetworks.addField("rssi", WiFi.RSSI(i));
       sensorNetworks.setTime(tnow);  //set the time
 
       // Print what are we exactly writing
       Serial.print("Writing: ");
-      Serial.println(client.pointToLineProtocol(sensorNetworks));
+      Serial.println(client.pointToLineProtocol(sensorNetworks).c_str());
 
       // Write point into buffer - low priority measures
       client.writePoint(sensorNetworks);
@@ -139,7 +141,7 @@ void loop() {
 
   // Print what are we exactly writing
   Serial.print("Writing: ");
-  Serial.println(client.pointToLineProtocol(sensorStatus));
+  Serial.println(client.pointToLineProtocol(sensorStatus).c_str());
 
   // Write point into buffer - high priority measure
   client.writePoint(sensorStatus);
@@ -156,7 +158,7 @@ void loop() {
   Serial.println("Flushing data into InfluxDB");
   if (!client.flushBuffer()) {
     Serial.print("InfluxDB flush failed: ");
-    Serial.println(client.getLastErrorMessage());
+    Serial.println(client.getLastErrorMessage().c_str());
     Serial.print("Full buffer: ");
     Serial.println(client.isBufferFull() ? "Yes" : "No");
   }

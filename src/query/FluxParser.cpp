@@ -28,13 +28,15 @@
 #include "FluxParser.h"
 // Uncomment bellow in case of a problem and rebuild sketch
 //#define INFLUXDB_CLIENT_DEBUG_ENABLE
+#include <strings.h>
+
 #include "util/debug.h"
 
 FluxQueryResult::FluxQueryResult(CsvReader *reader) {
     _data = std::make_shared<Data>(reader);
 }
 
-FluxQueryResult::FluxQueryResult(const String &error):FluxQueryResult((CsvReader *)nullptr) {
+FluxQueryResult::FluxQueryResult(const std::string &error):FluxQueryResult((CsvReader *)nullptr) {
     _data->_error = error;
 }
 
@@ -51,9 +53,9 @@ FluxQueryResult &FluxQueryResult::operator=(const FluxQueryResult &other) {
 FluxQueryResult::~FluxQueryResult() {
 }
 
-int FluxQueryResult::getColumnIndex(const String &columnName) {
+int FluxQueryResult::getColumnIndex(const std::string &columnName) {
     int i = -1;
-    std::vector<String>::iterator it = find(_data->_columnNames.begin(), _data->_columnNames.end(), columnName);
+    std::vector<std::string>::iterator it = find(_data->_columnNames.begin(), _data->_columnNames.end(), columnName);
     if (it != _data->_columnNames.end()) {
         i = distance(_data->_columnNames.begin(), it);
     }
@@ -68,7 +70,7 @@ FluxValue FluxQueryResult::getValueByIndex(int index) {
     return ret;
 }
 
-FluxValue FluxQueryResult::getValueByName(const String &columnName) {
+FluxValue FluxQueryResult::getValueByName(const std::string &columnName) {
     FluxValue ret;
     int i = getColumnIndex(columnName);
     if(i > -1) {
@@ -91,17 +93,16 @@ void FluxQueryResult::clearValues() {
 }
 
 void FluxQueryResult::clearColumns() {
-    std::for_each(_data->_columnNames.begin(), _data->_columnNames.end(), [](String &value){ value = (const char *)nullptr; });
+    std::for_each(_data->_columnNames.begin(), _data->_columnNames.end(), [](std::string &value){ value = (const char *)nullptr; });
     _data->_columnNames.clear();
 
-    std::for_each(_data->_columnDatatypes.begin(), _data->_columnDatatypes.end(), [](String &value){ value = (const char *)nullptr; });
+    std::for_each(_data->_columnDatatypes.begin(), _data->_columnDatatypes.end(), [](std::string &value){ value = (const char *)nullptr; });
     _data->_columnDatatypes.clear();
 }
 
-FluxQueryResult::Data::Data(CsvReader *reader):_reader(reader) {}
+FluxQueryResult::Data::Data(CsvReader *reader) : _reader(reader) {}
 
 FluxQueryResult::Data::~Data() { 
-    delete _reader;
 }
 
 enum ParsingState {
@@ -122,25 +123,25 @@ readRow:
     bool stat = _data->_reader->next();
     if(!stat) {
         if(_data->_reader->getError()< 0) {
-            _data->_error = HTTPClient::errorToString(_data->_reader->getError());
+            _data->_error = HTTPClient::errorToString(_data->_reader->getError()).c_str();
             INFLUXDB_CLIENT_DEBUG("Error '%s'\n", _data->_error.c_str());
         }
         return false;
     }
-    std::vector<String> vals = _data->_reader->getRow();
+    std::vector<std::string> vals = _data->_reader->getRow();
     INFLUXDB_CLIENT_DEBUG("[D] FluxQueryResult: vals.size %d\n", vals.size());
     if(vals.size() < 2) {
         goto readRow;
     }
     if(vals[0] == "") {
 		if (parsingState == ParsingStateError) {
-			String message ;
+			std::string message ;
 			if (vals.size() > 1 && vals[1].length() > 0) {
 				message = vals[1];
 			} else {
-				message = F("Unknown query error");
+				message = "Unknown query error";
 			}
-			String reference = "";
+			std::string reference = "";
             if (vals.size() > 2 && vals[2].length() > 0) {
 				reference = "," + vals[2];
 			}
@@ -152,7 +153,11 @@ readRow:
 				parsingState = ParsingStateError;
 			} else {
                 if (vals.size()-1 != _data->_columnDatatypes.size()) {
-                   _data->_error = String(F("Parsing error, header has different number of columns than table: ")) + String(vals.size()-1) + " vs " + String(_data->_columnDatatypes.size());
+                   _data->_error = 
+                        "Parsing error, header has different number of columns than table: " +
+                        std::to_string(vals.size() - 1) +
+                        " vs " +
+                        std::to_string(_data->_columnDatatypes.size());
                    INFLUXDB_CLIENT_DEBUG("Error '%s'\n", _data->_error.c_str());
 			       return false;
                 } else {
@@ -165,12 +170,16 @@ readRow:
 			goto readRow;
 		}
 		if(_data->_columnDatatypes.size() == 0) {
-			_data->_error = F("Parsing error, datatype annotation not found");
+			_data->_error = "Parsing error, datatype annotation not found";
             INFLUXDB_CLIENT_DEBUG("Error '%s'\n", _data->_error.c_str());
 			return false;
 		}
 		if (vals.size()-1 != _data->_columnNames.size()) {
-			_data->_error = String(F("Parsing error, row has different number of columns than table: ")) + String(vals.size()-1) + " vs " + String(_data->_columnNames.size());
+			_data->_error = 
+                "Parsing error, row has different number of columns than table: " +
+                 std::to_string(vals.size()-1) + 
+                 " vs " + 
+                 std::to_string(_data->_columnNames.size());
             INFLUXDB_CLIENT_DEBUG("Error '%s'\n", _data->_error.c_str());
 			return false;
 		}
@@ -179,7 +188,9 @@ readRow:
             if(vals[i].length() > 0) {
                 v = convertValue(vals[i], _data->_columnDatatypes[i-1]);
                 if(!v) {
-                    _data->_error = String(F("Unsupported datatype: ")) + _data->_columnDatatypes[i-1];
+                    _data->_error = 
+                        "Unsupported datatype: " +
+                        _data->_columnDatatypes[i-1];
                     INFLUXDB_CLIENT_DEBUG("Error '%s'\n", _data->_error.c_str());
                     return false;
                 }
@@ -202,28 +213,28 @@ readRow:
 	return true;
 }
 
-FluxDateTime *FluxQueryResult::convertRfc3339(String &value, const char *type) {
+FluxDateTime *FluxQueryResult::convertRfc3339(std::string &value, const char *type) {
     tm t = {0,0,0,0,0,0,0,0,0};
     // has the time part
-    int zet = value.indexOf('Z');
     unsigned long fracts = 0;
-    if(value.indexOf('T') > 0 && zet > 0) { //Full datetime string - 2020-05-22T11:25:22.037735433Z
+    if (value.find("T") != std::string::npos && value.find("Z") != std::string::npos) {  
+        // Full datetime string - 2020-05-22T11:25:22.037735433Z
         int f = sscanf(value.c_str(),"%d-%d-%dT%d:%d:%d", &t.tm_year,&t.tm_mon,&t.tm_mday, &t.tm_hour,&t.tm_min,&t.tm_sec);
         if(f != 6) {
             return nullptr;
         }
         t.tm_year -= 1900; //adjust to years after 1900
         t.tm_mon -= 1; //adjust to range 0-11
-        int dot = value.indexOf('.');
+        auto dot = value.find_first_of(".");
         
         if(dot > 0) {
-            int tail = zet;
-            int len = zet-dot-1;
+            int tail = value.find("Z");
+            int len = value.find("Z") - dot - 1;
             if (len > 6) {
                 tail = dot + 7; 
                 len = 6;
             }
-            String secParts = value.substring(dot+1, tail);
+            std::string secParts = value.substr(dot+1, tail);
             fracts = strtoul((const char *) secParts.c_str(), NULL, 10);
             if(len < 6) {
                 fracts *= 10^(6-len); 
@@ -240,34 +251,34 @@ FluxDateTime *FluxQueryResult::convertRfc3339(String &value, const char *type) {
     return new FluxDateTime(value, type, t, fracts);
 }
 
-FluxBase *FluxQueryResult::convertValue(String &value, String &dataType) {
+FluxBase *FluxQueryResult::convertValue(std::string &value, std::string &dataType) {
     FluxBase *ret = nullptr;
-    if(dataType.equals(FluxDatatypeDatetimeRFC3339) || dataType.equals(FluxDatatypeDatetimeRFC3339Nano)) {
+    if(dataType == FluxDatatypeDatetimeRFC3339 || dataType == FluxDatatypeDatetimeRFC3339Nano) {
         const char *type = FluxDatatypeDatetimeRFC3339;
-        if(dataType.equals(FluxDatatypeDatetimeRFC3339Nano)) {
+        if(dataType == FluxDatatypeDatetimeRFC3339Nano) {
             type = FluxDatatypeDatetimeRFC3339Nano;
         }
         ret = convertRfc3339(value, type);
         if (!ret) {
-            _data->_error = String(F("Invalid value for '")) + dataType + F("': ") + value;
+            _data->_error = std::string("Invalid value for '") + dataType + "': " + value;
         }
-    } else if(dataType.equals(FluxDatatypeDouble)) {
+    } else if(dataType == FluxDatatypeDouble) {
         double val = strtod((const char *) value.c_str(), NULL);
         ret = new FluxDouble(value, val);
-    } else if(dataType.equals(FluxDatatypeBool)) {
-        bool val = value.equalsIgnoreCase("true");
+    } else if(dataType == FluxDatatypeBool) {
+        bool val = strcasecmp(value.c_str(), "true") == 0;
         ret = new FluxBool(value, val);
-    } else if(dataType.equals(FluxDatatypeLong)) {
+    } else if(dataType == FluxDatatypeLong) {
         long l = strtol((const char *) value.c_str(), NULL, 10);
         ret = new FluxLong(value, l);
-    } else if(dataType.equals(FluxDatatypeUnsignedLong)) {
+    } else if(dataType == FluxDatatypeUnsignedLong) {
         unsigned long ul = strtoul((const char *) value.c_str(), NULL, 10);
         ret = new FluxUnsignedLong(value, ul);
-    } else if(dataType.equals(FluxBinaryDataTypeBase64)) {
+    } else if(dataType == FluxBinaryDataTypeBase64) {
         ret = new FluxString(value, FluxBinaryDataTypeBase64);
-    } else if(dataType.equals(FluxDatatypeDuration)) {
+    } else if(dataType == FluxDatatypeDuration) {
         ret = new FluxString(value, FluxDatatypeDuration);
-    } else if(dataType.equals(FluxDatatypeString)) {
+    } else if(dataType == FluxDatatypeString) {
         ret = new FluxString(value, FluxDatatypeString);
     }
     return ret;

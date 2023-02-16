@@ -8,7 +8,7 @@
 static const char UserAgent[] PROGMEM = "influxdb-client-arduino/" INFLUXDB_CLIENT_VERSION " (" INFLUXDB_CLIENT_PLATFORM " " INFLUXDB_CLIENT_PLATFORM_VERSION ")";
 
 #if defined(ESP8266)         
-bool checkMFLN(BearSSL::WiFiClientSecure  *client, String url);
+bool checkMFLN(BearSSL::WiFiClientSecure  *client, std::string url);
 #endif
 
 // This cannot be put to PROGMEM due to the way how it is used
@@ -18,7 +18,7 @@ const char *TransferEncoding = "Transfer-Encoding";
 HTTPService::HTTPService(ConnectionInfo *pConnInfo):_pConnInfo(pConnInfo) {
   _apiURL = pConnInfo->serverUrl;
   _apiURL += "/api/v2/";
-  bool https = pConnInfo->serverUrl.startsWith("https");
+  auto https{pConnInfo->serverUrl.find("https") != std::string::npos};
   if(https) {
 #if defined(ESP8266)         
     BearSSL::WiFiClientSecure *wifiClientSec = new BearSSL::WiFiClientSecure;
@@ -26,8 +26,8 @@ HTTPService::HTTPService(ConnectionInfo *pConnInfo):_pConnInfo(pConnInfo) {
       wifiClientSec->setInsecure();
     } else if(pConnInfo->certInfo && strlen_P(pConnInfo->certInfo) > 0) {
       if(strlen_P(pConnInfo->certInfo) > 60 ) { //differentiate fingerprint and cert
-         _cert = new BearSSL::X509List(pConnInfo->certInfo); 
-         wifiClientSec->setTrustAnchors(_cert);
+         _cert.reset(new BearSSL::X509List(pConnInfo->certInfo)); 
+         wifiClientSec->setTrustAnchors(_cert.get());
       } else {
          wifiClientSec->setFingerprint(pConnInfo->certInfo);
       }
@@ -44,12 +44,12 @@ HTTPService::HTTPService(ConnectionInfo *pConnInfo):_pConnInfo(pConnInfo) {
       wifiClientSec->setCACert(pConnInfo->certInfo);
     }
 #endif    
-    _wifiClient = wifiClientSec;
+    _wifiClient.reset(wifiClientSec);
   } else {
-    _wifiClient = new WiFiClient;
+    _wifiClient.reset(new WiFiClient);
   }
   if(!_httpClient) {
-    _httpClient = new HTTPClient;
+    _httpClient.reset(new HTTPClient);
   }
   _httpClient->setReuse(_httpOptions._connectionReuse);
 
@@ -57,27 +57,13 @@ HTTPService::HTTPService(ConnectionInfo *pConnInfo):_pConnInfo(pConnInfo) {
 };
 
 HTTPService::~HTTPService() {
-  if(_httpClient) {
-    delete _httpClient;
-    _httpClient = nullptr;
-  }
-  if(_wifiClient) {
-    delete _wifiClient;
-    _wifiClient = nullptr;
-  }
-#if defined(ESP8266)     
-  if(_cert) {
-    delete _cert;
-    _cert = nullptr;
-}
-#endif
 }
 
 
 void HTTPService::setHTTPOptions(const HTTPOptions & httpOptions) {
     _httpOptions = httpOptions;
     if(!_httpClient) {
-        _httpClient = new HTTPClient;
+        _httpClient.reset(new HTTPClient);
     }
     _httpClient->setReuse(_httpOptions._connectionReuse);
     _httpClient->setTimeout(_httpOptions._httpReadTimeout);
@@ -88,14 +74,14 @@ void HTTPService::setHTTPOptions(const HTTPOptions & httpOptions) {
 
 // parse URL for host and port and call probeMaxFragmentLength
 #if defined(ESP8266)         
-bool checkMFLN(BearSSL::WiFiClientSecure  *client, String url) {
-    int index = url.indexOf(':');
-     if(index < 0) {
+bool checkMFLN(BearSSL::WiFiClientSecure  *client, std::string url) {
+    auto index = url.find(':');
+    if (index == std::string::npos) {
         return false;
     }
-    String protocol = url.substring(0, index);
+    std::string protocol = url.substr(0, index);
     int port = -1;
-    url.remove(0, (index + 3)); // remove http:// or https://
+    url.erase(0, (index + 3)); // remove http:// or https://
 
     if (protocol == "http") {
         // set default port for 'http'
@@ -106,24 +92,24 @@ bool checkMFLN(BearSSL::WiFiClientSecure  *client, String url) {
     } else {
         return false;
     }
-    index = url.indexOf('/');
-    String host = url.substring(0, index);
-    url.remove(0, index); // remove host 
+    index = url.find("/");
+    std::string host = url.substr(0, index);
+    url.erase(0, index); // remove host 
     // check Authorization
-    index = host.indexOf('@');
+    index = host.find("@");
     if(index >= 0) {
-        host.remove(0, index + 1); // remove auth part including @
+        host.erase(0, index + 1); // remove auth part including @
     }
     // get port
-    index = host.indexOf(':');
+    index = host.find(":");
     if(index >= 0) {
-        String portS = host;
-        host = host.substring(0, index); // hostname
-        portS.remove(0, (index + 1)); // remove hostname + :
-        port = portS.toInt(); // get port
+        std::string portS = host;
+        host = host.substr(0, index); // hostname
+        portS.erase(0, (index + 1)); // remove hostname + :
+        port = std::atoi(portS.c_str()); // get port
     }
     INFLUXDB_CLIENT_DEBUG("[D] probeMaxFragmentLength to %s:%d\n", host.c_str(), port);
-    bool mfln = client->probeMaxFragmentLength(host, port, 1024);
+    bool mfln = client->probeMaxFragmentLength(host.c_str(), port, 1024);
     INFLUXDB_CLIENT_DEBUG("[D]  MFLN:%s\n", mfln ? "yes" : "no");
     if (mfln) {
         client->setBufferSizes(1024, 1024);
@@ -134,11 +120,12 @@ bool checkMFLN(BearSSL::WiFiClientSecure  *client, String url) {
 
 bool HTTPService::beforeRequest(const char *url) {
    if(!_httpClient->begin(*_wifiClient, url)) {
-    _pConnInfo->lastError = F("begin failed");
+    _pConnInfo->lastError = "begin failed";
     return false;
   }
   if(_pConnInfo->authToken.length() > 0) {
-    _httpClient->addHeader(F("Authorization"), "Token " + _pConnInfo->authToken);
+    _httpClient->addHeader(F("Authorization"), 
+                           "Token " + String(_pConnInfo->authToken.c_str()));
   }
   const char * headerKeys[] = {RetryAfter, TransferEncoding} ;
   _httpClient->collectHeaders(headerKeys, 2);
@@ -204,14 +191,14 @@ bool HTTPService::afterRequest(int expectedStatusCode, httpResponseCallback cb, 
     bool endConnection = true;
     if(!ret) {
         if(_lastStatusCode > 0) {
-            _pConnInfo->lastError = _httpClient->getString();
+            _pConnInfo->lastError = _httpClient->getString().c_str();
             INFLUXDB_CLIENT_DEBUG("[D] Response:\n%s\n", _pConnInfo->lastError.c_str());
         } else {
-            _pConnInfo->lastError = _httpClient->errorToString(_lastStatusCode);
+            _pConnInfo->lastError = _httpClient->errorToString(_lastStatusCode).c_str();
             INFLUXDB_CLIENT_DEBUG("[E] Error - %s\n", _pConnInfo->lastError.c_str());
         }
     } else if(cb){
-      endConnection = cb(_httpClient);
+      endConnection = cb(_httpClient.get());
     }
     if(endConnection) {
         _httpClient->end();

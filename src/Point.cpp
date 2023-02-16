@@ -28,7 +28,7 @@
 #include "Point.h"
 #include "util/helpers.h"
 
-Point::Point(const String & measurement)
+Point::Point(const std::string & measurement)
 {
   _data = std::make_shared<Data>(escapeKey(measurement, false));
 }
@@ -36,16 +36,12 @@ Point::Point(const String & measurement)
 Point::~Point() {
 }
 
-Point::Data::Data(char * measurement) {
-  this->measurement = measurement;
-  timestamp = nullptr;
+Point::Data::Data(const std::string &_measurement) : measurement(_measurement) {
+  timestamp = "";
   tsWritePrecision = WritePrecision::NoTime;
 }
 
-Point::Data::~Data() {
-  delete [] measurement;
-  delete [] timestamp;
-}
+Point::Data::~Data() {}
 
 Point::Point(const Point &other) {
   *this = other;
@@ -58,97 +54,95 @@ Point& Point::operator=(const Point &other) {
   return *this;
 }
 
-void Point::addTag(const String &name, String value) {
+void Point::addTag(const std::string &name, std::string value) {
   if(_data->tags.length() > 0) {
       _data->tags += ',';
   }
-  char *s = escapeKey(name);
-  _data->tags += s;
-  delete [] s;
+  _data->tags += escapeKey(name);
   _data->tags += '=';
-  s = escapeKey(value);
-  _data->tags += s;
-  delete [] s;
+  _data->tags += escapeKey(value);
 }
 
-void Point::addField(const String &name, long long value) {
+void Point::addField(const std::string &name, long long value) {
   char buff[23];
   snprintf(buff, 50, "%lld", value);
-  putField(name, String(buff)+"i");
+  putField(name, std::string(buff)+"i");
 }
 
-void Point::addField(const String &name, unsigned long long value) {
+void Point::addField(const std::string &name, unsigned long long value) {
   char buff[23];
   snprintf(buff, 50, "%llu", value);
-  putField(name, String(buff)+"i");
+  putField(name, std::string(buff)+"i");
 }
 
-void Point::addField(const String &name, const char *value) { 
+void Point::addField(const std::string &name, const char *value) { 
     putField(name, escapeValue(value)); 
 }
 
-void Point::addField(const String &name, const __FlashStringHelper *pstr) {
-    addField(name, String(pstr));
+void Point::addField(const std::string &name, const __FlashStringHelper *pstr) {
+    std::unique_ptr<char[]> buff{new char[strlen_P((PGM_P)pstr) + 1]};
+    addField(name, buff.get());
 }
 
-void Point::addField(const String &name, float value, int decimalPlaces) { 
-    if(!isnan(value)) putField(name, String(value, decimalPlaces)); 
+void Point::addField(const std::string &name, float value, int decimalPlaces) { 
+    if(!isnan(value)) putField(name, std::to_string(value)); 
 }
 
-void Point::addField(const String &name, double value, int decimalPlaces) {
-    if(!isnan(value)) putField(name, String(value, decimalPlaces)); 
+void Point::addField(const std::string &name, double value, int decimalPlaces) {
+    if(!isnan(value)) putField(name, std::to_string(value)); 
 }
 
-void Point::addField(const String &name, char value) { 
-    addField(name, String(value).c_str()); 
+void Point::addField(const std::string &name, char value) { 
+    addField(name, std::string{value}); 
 }
 
-void Point::addField(const String &name, unsigned char value) {
-    putField(name, String(value)+"i"); 
+void Point::addField(const std::string &name, unsigned char value) {
+    putField(name, std::to_string(value) + "i");
 }
 
-void Point::addField(const String &name, int value) { 
-    putField(name, String(value)+"i"); 
+void Point::addField(const std::string &name, int value) { 
+    putField(name, std::to_string(value) + "i"); 
 }
 
-void Point::addField(const String &name, unsigned int value) { 
-    putField(name, String(value)+"i"); 
+void Point::addField(const std::string &name, unsigned int value) { 
+    putField(name, std::to_string(value) + "i"); 
 }
 
-void Point::addField(const String &name, long value)  { 
-    putField(name, String(value)+"i"); 
+void Point::addField(const std::string &name, long value)  { 
+    putField(name, std::to_string(value) + "i"); 
 }
 
-void Point::addField(const String &name, unsigned long value) { 
-    putField(name, String(value)+"i"); 
+void Point::addField(const std::string &name, unsigned long value) { 
+    putField(name, std::to_string(value) + "i"); 
 }
 
-void Point::addField(const String &name, bool value)  { 
+void Point::addField(const std::string &name, bool value)  { 
     putField(name, bool2string(value)); 
 }
 
-void Point::addField(const String &name, const String &value)  { 
-    addField(name, value.c_str()); 
+void Point::addField(const std::string &name, const std::string &value)  { 
+    addField(name, value); 
 }
 
-void Point::putField(const String &name, const String &value) {
+void Point::putField(const std::string &name, const std::string &value) {
     if(_data->fields.length() > 0) {
         _data->fields += ',';
     }
-    char *s = escapeKey(name);
-    _data->fields += s;
-    delete [] s;
+    _data->fields += escapeKey(name);
     _data->fields += '=';
     _data->fields += value;
 }
 
-String Point::toLineProtocol(const String &includeTags) const {
+std::string Point::toLineProtocol(const std::string &includeTags) const {
     return createLineProtocol(includeTags);
 }
 
-String Point::createLineProtocol(const String &incTags, bool excludeTimestamp) const {
-    String line;
-    line.reserve(strLen(_data->measurement) + 1 + incTags.length() + 1 + _data->tags.length() + 1 + _data->fields.length() + 1 + strLen(_data->timestamp));
+std::string Point::createLineProtocol(const std::string &incTags, bool excludeTimestamp) const {
+    std::string line;
+    line.reserve(
+        _data->measurement.length() + 1 + incTags.length() + 1 + 
+        _data->tags.length() + 1 + _data->fields.length() + 1 + 
+        _data->timestamp.length());
     line += _data->measurement;
     if(incTags.length()>0) {
         line += ",";
@@ -197,23 +191,21 @@ void  Point::setTime(unsigned long long timestamp) {
     setTime(timeStampToString(timestamp));
 }
 
-void Point::setTime(const String &timestamp) {
-    setTime(cloneStr(timestamp.c_str()));
+void Point::setTime(const std::string &timestamp) {
+    _data->timestamp = timestamp;
 }
 
 void Point::setTime(const char *timestamp) {
-    setTime(cloneStr(timestamp));    
+    _data->timestamp = timestamp;   
 }
 
 void Point::setTime(char *timestamp) {
-    delete [] _data->timestamp;
     _data->timestamp = timestamp;
 }
 
 void  Point::clearFields() {
     _data->fields = (char *)nullptr;
-    delete [] _data->timestamp;
-    _data->timestamp = nullptr;
+    _data->timestamp = "";
 }
 
 void Point:: clearTags() {

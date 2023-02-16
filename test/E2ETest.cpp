@@ -1,5 +1,7 @@
 #include "E2ETest.h"
 
+#include <string>
+
 void E2ETest::run() {
     failures = 0;
     Serial.println("E2E Tests");
@@ -14,7 +16,7 @@ void E2ETest::testBuckets() {
     BucketsClient buckets = client.getBucketsClient();
     TEST_ASSERT(!buckets.isNull());
     TEST_ASSERTM(client.validateConnection(),client.getLastErrorMessage());
-    String id = buckets.getOrgID("my-org");
+    std::string id = buckets.getOrgID("my-org");
     TEST_ASSERTM( isValidID(id.c_str()), id.length()?id:buckets.getLastErrorMessage());
     id = buckets.getOrgID("org");
     TEST_ASSERT( id == "");
@@ -25,7 +27,7 @@ void E2ETest::testBuckets() {
     TEST_ASSERTM(!b.isNull(), buckets.getLastErrorMessage());
     TEST_ASSERTM(isValidID(b.getID()), b.getID());
     TEST_ASSERTM(!strcmp(b.getName(), "bucket-1"), b.getName());
-    TEST_ASSERTM(b.getExpire() == 0, String(b.getExpire()));
+    TEST_ASSERTM(b.getExpire() == 0, std::to_string(b.getExpire()));
     TEST_ASSERT(buckets.checkBucketExists("bucket-1"));
     TEST_ASSERT(buckets.deleteBucket(b.getID()));;
     TEST_ASSERT(!buckets.checkBucketExists("bucket-1"));
@@ -35,13 +37,13 @@ void E2ETest::testBuckets() {
     b = buckets.createBucket("bucket-2", monthSec);
     TEST_ASSERTM(!b.isNull(), buckets.getLastErrorMessage());
     TEST_ASSERT(buckets.checkBucketExists("bucket-2"));
-    TEST_ASSERTM(b.getExpire() == monthSec, String(b.getExpire()));
+    TEST_ASSERTM(b.getExpire() == monthSec, std::to_string(b.getExpire()));
 
     uint32_t yearSec = 12*monthSec;
     Bucket b2 = buckets.createBucket("bucket-3", yearSec);
     TEST_ASSERTM(!b2.isNull(), buckets.getLastErrorMessage());
     TEST_ASSERT(buckets.checkBucketExists("bucket-3"));
-    TEST_ASSERTM(b2.getExpire() == yearSec, String(b2.getExpire()));
+    TEST_ASSERTM(b2.getExpire() == yearSec, std::to_string(b2.getExpire()));
 
     TEST_ASSERT(buckets.checkBucketExists("bucket-2"));
     TEST_ASSERT(buckets.deleteBucket(b.getID()));
@@ -76,20 +78,19 @@ void E2ETest::testWriteAndQuery() {
 
     delay(1000);
     for (int i = 0; i < 5; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERTM(client.writePoint(*p),client.getLastErrorMessage());
-        delete p;
-    }   
-    
-    char *query = new char[strlen_P(QueryTemplate)+strlen(TestBucket)+10+1]; //10 - maximum=length of timestamo
-    sprintf_P(query, QueryTemplate, TestBucket, start);
-    FluxQueryResult result = client.query(query);
-    delete [] query;
+        TEST_ASSERTM(client.writePoint(*p.get()),client.getLastErrorMessage());
+    }
+
+    std::unique_ptr<char[]> query {
+        new char[strlen_P(QueryTemplate) + strlen(TestBucket) + 10 + 1] };  // 10 - maximum=length of timestamp
+    sprintf_P(query.get(), QueryTemplate, TestBucket, start);
+    FluxQueryResult result = client.query(query.get());
     TEST_ASSERTM(result.next(), result.getError());
     FluxValue val = result.getValueByName("index");
     TEST_ASSERT(!val.isNull());
-    TEST_ASSERTM(val.getLong() == 5, String(val.getLong()));
+    TEST_ASSERTM(val.getLong() == 5, std::to_string(val.getLong()));
     TEST_ASSERTM(!result.next(), result.getError());
     
     result.close();

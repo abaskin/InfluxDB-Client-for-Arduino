@@ -32,8 +32,8 @@
 
 static const char TooEarlyMessage[] PROGMEM = "Cannot send request yet because of applied retry strategy. Remaining ";
 
-static String escapeJSONString(const String &value);
-static String precisionToString(WritePrecision precision, uint8_t version = 2) {
+static std::string escapeJSONString(const std::string &value);
+static std::string precisionToString(WritePrecision precision, uint8_t version = 2) {
     switch(precision) {
         case WritePrecision::US:
             return version==1?"u":"us";
@@ -53,14 +53,14 @@ InfluxDBClient::InfluxDBClient() {
    resetBuffer();
 }
 
-InfluxDBClient::InfluxDBClient(const String &serverUrl, const String &db):InfluxDBClient() {
+InfluxDBClient::InfluxDBClient(const std::string &serverUrl, const std::string &db):InfluxDBClient() {
     setConnectionParamsV1(serverUrl, db);
 }
 
-InfluxDBClient::InfluxDBClient(const String &serverUrl, const String &org, const String &bucket, const String &authToken):InfluxDBClient(serverUrl, org, bucket, authToken, nullptr) { 
+InfluxDBClient::InfluxDBClient(const std::string &serverUrl, const std::string &org, const std::string &bucket, const std::string &authToken):InfluxDBClient(serverUrl, org, bucket, authToken, nullptr) { 
 }
 
-InfluxDBClient::InfluxDBClient(const String &serverUrl, const String &org, const String &bucket, const String &authToken, const char *serverCert):InfluxDBClient() {
+InfluxDBClient::InfluxDBClient(const std::string &serverUrl, const std::string &org, const std::string &bucket, const std::string &authToken, const char *serverCert):InfluxDBClient() {
     setConnectionParams(serverUrl, org, bucket, authToken, serverCert);
 }
 
@@ -68,7 +68,7 @@ void InfluxDBClient::setInsecure(bool value){
   _connInfo.insecure = value;
 }
 
-void InfluxDBClient::setConnectionParams(const String &serverUrl, const String &org, const String &bucket, const String &authToken, const char *certInfo) {
+void InfluxDBClient::setConnectionParams(const std::string &serverUrl, const std::string &org, const std::string &bucket, const std::string &authToken, const char *certInfo) {
     clean();
     _connInfo.serverUrl = serverUrl;
     _connInfo.bucket = bucket;
@@ -78,7 +78,7 @@ void InfluxDBClient::setConnectionParams(const String &serverUrl, const String &
     _connInfo.dbVersion = 2;
 }
 
-void InfluxDBClient::setConnectionParamsV1(const String &serverUrl, const String &db, const String &user, const String &password, const char *certInfo) {
+void InfluxDBClient::setConnectionParamsV1(const std::string &serverUrl, const std::string &db, const std::string &user, const std::string &password, const char *certInfo) {
     clean();
     _connInfo.serverUrl = serverUrl;
     _connInfo.bucket = db;
@@ -100,17 +100,18 @@ bool InfluxDBClient::init() {
     INFLUXDB_CLIENT_DEBUG("[D]  DB version: %d\n", _connInfo.dbVersion);
     if(_connInfo.serverUrl.length() == 0 || (_connInfo.dbVersion == 2 && (_connInfo.org.length() == 0 || _connInfo.bucket.length() == 0 || _connInfo.authToken.length() == 0))) {
         INFLUXDB_CLIENT_DEBUG("[E] Invalid parameters\n");
-        _connInfo.lastError = F("Invalid parameters");
+        _connInfo.lastError = "Invalid parameters";
         return false;
     }
-    if(_connInfo.serverUrl.endsWith("/")) {
-         _connInfo.serverUrl = _connInfo.serverUrl.substring(0,_connInfo.serverUrl.length()-1);
+    if (endsWith(_connInfo.serverUrl, "/")) {
+        _connInfo.serverUrl =
+            _connInfo.serverUrl.substr(0, _connInfo.serverUrl.length() - 1);
     }
-    if(!_connInfo.serverUrl.startsWith("http")) {
-        _connInfo.lastError = F("Invalid URL scheme");
+    if (!startsWith(_connInfo.serverUrl, "http")) {
+        _connInfo.lastError = "Invalid URL scheme";
         return false;
-    }
-    _service = new HTTPService(&_connInfo);
+        }
+    _service.reset(new HTTPService(&_connInfo));
 
     setUrls();
     
@@ -120,24 +121,11 @@ bool InfluxDBClient::init() {
 
 
 InfluxDBClient::~InfluxDBClient() {
-     if(_writeBuffer) {
-        for(int i=0;i<_writeBufferSize;i++) {
-            delete _writeBuffer[i];
-        }
-        delete [] _writeBuffer;
-        _writeBuffer = nullptr;
-        _bufferPointer = 0;
-        _batchPointer = 0;
-        _bufferCeiling = 0;
-    }
+    _writeBuffer.clear();
     clean();
 }
 
 void InfluxDBClient::clean() {
-    if(_service) {
-        delete _service;
-        _service = nullptr;
-    }
     _buckets = nullptr;
     _lastFlushed = millis();
     _retryTime = 0;
@@ -166,7 +154,7 @@ bool InfluxDBClient::setUrls() {
         _queryUrl = _connInfo.serverUrl;
         _queryUrl += "/api/v2/query";
         if(_connInfo.user.length() > 0 && _connInfo.password.length() > 0) {
-            String auth = "&u=";
+            std::string auth = "&u=";
             auth += urlEncode(_connInfo.user.c_str());
             auth += "&p=";
             auth += urlEncode(_connInfo.password.c_str());
@@ -243,30 +231,21 @@ BucketsClient InfluxDBClient::getBucketsClient() {
         return BucketsClient();
     }
     if(!_buckets) {
-        _buckets = BucketsClient(&_connInfo, _service);
+        _buckets = BucketsClient(&_connInfo, _service.get());
     }
     return _buckets;
 }
 
 void InfluxDBClient::resetBuffer() {
-    if(_writeBuffer) {
-        for(int i=0;i<_writeBufferSize;i++) {
-            delete _writeBuffer[i];
-        }
-        delete [] _writeBuffer;
-    }
+    _writeBuffer.clear();
     INFLUXDB_CLIENT_DEBUG("[D] Reset buffer: buffer Size: %d, batch size: %d\n", _writeOptions._bufferSize, _writeOptions._batchSize);
     uint16_t a = _writeOptions._bufferSize/_writeOptions._batchSize;
     //limit to max(byte)
-    _writeBufferSize = a>=(1<<8)?(1<<8)-1:a;
+    _writeBufferSize = a >= (1 << 8) ? (1 << 8) - 1:a;
     if(_writeBufferSize < 2) {
         _writeBufferSize = 2;
     }
     INFLUXDB_CLIENT_DEBUG("[D] Reset buffer: writeBuffSize: %d\n", _writeBufferSize);
-    _writeBuffer = new Batch*[_writeBufferSize];
-    for(int i=0;i<_writeBufferSize;i++) {
-        _writeBuffer[i] = nullptr;
-    }
     _bufferPointer = 0;
     _batchPointer = 0;
     _bufferCeiling = 0;
@@ -274,28 +253,14 @@ void InfluxDBClient::resetBuffer() {
 
 void InfluxDBClient::reserveBuffer(int size) {
     if(size > _writeBufferSize) {
-        Batch **newBuffer = new Batch*[size];
         INFLUXDB_CLIENT_DEBUG("[D] Resizing buffer from %d to %d\n",_writeBufferSize, size);
-        for(int i=0;i<_bufferCeiling; i++) {
-            newBuffer[i] = _writeBuffer[i];
-        }
-        
-        delete [] _writeBuffer;
-        _writeBuffer = newBuffer;
+        _writeBuffer.resize(size);
         _writeBufferSize = size;
     }
 }
 
 void InfluxDBClient::addZerosToTimestamp(Point &point, int zeroes) {
-    char *ts = point._data->timestamp, *s;
-    point._data->timestamp = new char[strlen(point._data->timestamp) + 1 + zeroes];
-    strcpy(point._data->timestamp, ts);
-    s = point._data->timestamp+strlen(ts);
-    for(int i=0;i<zeroes;i++) {
-        *s++ = '0';
-    }
-    *s = 0;
-    delete [] ts;
+    point._data->timestamp.append(zeroes, '0');
 }
 
 void InfluxDBClient::checkPrecisions(Point & point) {
@@ -306,7 +271,7 @@ void InfluxDBClient::checkPrecisions(Point & point) {
         } else if(point._data->tsWritePrecision != WritePrecision::NoTime && point._data->tsWritePrecision != _writeOptions._writePrecision) {
             int diff = int(point._data->tsWritePrecision) - int(_writeOptions._writePrecision);
             if(diff > 0) { //point has higher precision, cut 
-                point._data->timestamp[strlen(point._data->timestamp)-diff*3] = 0;
+                point._data->timestamp.erase(point._data->timestamp.length()-diff*3);
             } else { //point has lower precision, add zeroes
                 addZerosToTimestamp(point, diff*-3);
             }
@@ -321,7 +286,7 @@ void InfluxDBClient::checkPrecisions(Point & point) {
 bool InfluxDBClient::writePoint(Point & point) {
     if (point.hasFields()) {
         checkPrecisions(point);
-        String line = pointToLineProtocol(point);
+        auto line = pointToLineProtocol(point);
         return writeRecord(line);
     }
     return false;
@@ -330,71 +295,51 @@ bool InfluxDBClient::writePoint(Point & point) {
 
 
 InfluxDBClient::Batch::Batch(uint16_t size):_size(size) {  
-    buffer = new char*[size]; 
-    for(int i=0;i< _size; i++) {
-        buffer[i] = nullptr; 
-    }
+    buffer.reserve(size); 
 }
 
 
 InfluxDBClient::Batch::~Batch() { 
     clear();
-    delete [] buffer; 
-    buffer = nullptr;
 }
 
 void InfluxDBClient::Batch::clear() {
-    for(int i=0;i< _size; i++) {
-        free(buffer[i]);
-        buffer[i] = nullptr; 
-    }
+    buffer.clear();
 }
 
 bool InfluxDBClient::Batch::append(const char *line) {
-    if(pointer == _size) {
-        //overwriting, clean buffer
+    if(buffer.size() == _size) {
         clear();
-        pointer = 0;
     } 
-    buffer[pointer] = strdup(line);
-    ++pointer;
+    buffer.emplace_back(line);
     return isFull();
 }
 
-char * InfluxDBClient::Batch::createData() {
-     int length = 0; 
-     char *buff = nullptr;
-     for(int c=0; c < pointer; c++) {
-        length += strlen(buffer[c]);
+std::string InfluxDBClient::Batch::createData() {
+    size_t length { 0 };
+    std::for_each(buffer.begin(), buffer.end(),[&length](const std::string& b){
+        length += b.length();
         yield();
-    }
-    //create buffer for all lines including new line char and terminating char
-    if(length) {
-        buff = new char[length + pointer + 1];
-        if(buff) {
-            buff[0] = 0;
-            for(int c=0; c < pointer; c++) {
-                strcat(buff+strlen(buff), buffer[c]);
-                strcat(buff+strlen(buff), "\n");
-                yield();
-            }
-        }
-    }
+    });
+    std::string buff;
+    buff.reserve(length + buffer.size());
+    std::for_each(buffer.begin(), buffer.end(),
+                  [&buff](const std::string& b) { buff.append(b + "\n"); });
     return buff;
 }
 
-bool InfluxDBClient::writeRecord(const String &record) {
+bool InfluxDBClient::writeRecord(const std::string &record) {
     return writeRecord(record.c_str());
 }
 
-bool InfluxDBClient::writeRecord(const char *record) {    
-    if(!_writeBuffer[_bufferPointer]) {
-        _writeBuffer[_bufferPointer] = new Batch(_writeOptions._batchSize);
+bool InfluxDBClient::writeRecord(const char *record) {
+    if (!_writeBuffer[_bufferPointer]) {
+        _writeBuffer.emplace_back(new Batch{_writeOptions._batchSize});
     }
     if(isBufferFull() && _batchPointer <= _bufferPointer) {
         // When we are overwriting buffer and nothing is written, batchPointer must point to the oldest point
-        _batchPointer = _bufferPointer+1;
-        if(_batchPointer == _writeBufferSize) {
+        _batchPointer = _bufferPointer + 1;
+        if (_batchPointer == _writeBufferSize) {
             _batchPointer = 0;
         }
     }
@@ -447,15 +392,14 @@ bool InfluxDBClient::flushBufferInternal(bool flashOnlyFull) {
     if(rwt > 0) {
         INFLUXDB_CLIENT_DEBUG("[W] Cannot write yet, pause %ds, %ds yet\n", _retryTime, rwt);
         // retry after period didn't run out yet
-        _connInfo.lastError = FPSTR(TooEarlyMessage);
-        _connInfo.lastError += String(rwt);
+        _connInfo.lastError = TooEarlyMessage;
+        _connInfo.lastError += std::to_string(rwt);
         _connInfo.lastError += "s";
         return false;
     }
-    char *data;
     bool success = true;
     // send all batches, It could happen there was long network outage and buffer is full
-    while(_writeBuffer[_batchPointer] && (!flashOnlyFull ||  _writeBuffer[_batchPointer]->isFull())) {
+    while(_batchPointer < _writeBuffer.size() && (!flashOnlyFull ||  _writeBuffer[_batchPointer]->isFull())) {
         if(!_writeBuffer[_batchPointer]->isFull() && _writeBuffer[_batchPointer]->retryCount == 0 ) { //do not increase pointer in case of retrying
             // points will be written so increase _bufferPointer as it happen when buffer is flushed when is full
             if(++_bufferPointer == _writeBufferSize) {
@@ -467,11 +411,9 @@ bool InfluxDBClient::flushBufferInternal(bool flashOnlyFull) {
         if(!_writeBuffer[_batchPointer]->isEmpty()) {
             int statusCode = 0;
             if(_streamWrite) {
-                statusCode = postData(_writeBuffer[_batchPointer]);
+                statusCode = postData(_writeBuffer[_batchPointer].get());
             } else {
-                data = _writeBuffer[_batchPointer]->createData();
-                statusCode = postData(data);
-                delete [] data;
+                statusCode = postData(_writeBuffer[_batchPointer]->createData().c_str());
             }
             // retry on unsuccessfull connection or retryable status codes
             bool retry = (statusCode < 0 || statusCode >= 429) && _writeOptions._maxRetryAttempts > 0;
@@ -489,8 +431,8 @@ bool InfluxDBClient::flushBufferInternal(bool flashOnlyFull) {
                     }
                     if(!_retryTime) {
                         _retryTime = _writeOptions._retryInterval;
-                        if(_writeBuffer[_batchPointer]) {
-                            for(int i=1;i<_writeBuffer[_batchPointer]->retryCount;i++) {
+                        if(_batchPointer < _writeBuffer.size()) {
+                            for(int i = 1; i < _writeBuffer[_batchPointer]->retryCount; i++) {
                                 _retryTime *= _writeOptions._retryInterval;
                             }
                             if(_retryTime > _writeOptions._maxRetryInterval) {
@@ -518,8 +460,7 @@ bool InfluxDBClient::flushBufferInternal(bool flashOnlyFull) {
 }
 
 void  InfluxDBClient::dropCurrentBatch() {
-    delete _writeBuffer[_batchPointer];
-    _writeBuffer[_batchPointer] = nullptr;
+    _writeBuffer.erase(_writeBuffer.begin() + _batchPointer);
     _batchPointer++;
     //did we got over top?
     if(_batchPointer == _writeBufferSize) {
@@ -531,7 +472,7 @@ void  InfluxDBClient::dropCurrentBatch() {
     INFLUXDB_CLIENT_DEBUG("[D] Dropped batch, batchpointer: %d\n", _batchPointer);
 }
 
-String InfluxDBClient::pointToLineProtocol(const Point& point) {
+std::string InfluxDBClient::pointToLineProtocol(const Point& point) {
     return point.createLineProtocol(_writeOptions._defaultTags, _writeOptions._useServerTimestamp);
 }
 
@@ -540,7 +481,7 @@ bool InfluxDBClient::validateConnection() {
         return false;
     }
     // on version 1.x /ping will by default return status code 204, without verbose
-    String url = _connInfo.serverUrl + (_connInfo.dbVersion==2?"/health":"/ping?verbose=true");
+    auto url = _connInfo.serverUrl + (_connInfo.dbVersion==2?"/health":"/ping?verbose=true");
     if(_connInfo.dbVersion==1 && _connInfo.user.length() > 0 && _connInfo.password.length() > 0) {
         url += "&u=";
         url += urlEncode(_connInfo.user.c_str());
@@ -577,14 +518,13 @@ int InfluxDBClient::postData(Batch *batch) {
         return 0;
     }
 
-    BatchStreamer *bs = new BatchStreamer(batch);
+    std::unique_ptr<BatchStreamer> bs { new BatchStreamer(batch) }; 
     INFLUXDB_CLIENT_DEBUG("[D] Writing to %s\n", _writeUrl.c_str());
     INFLUXDB_CLIENT_DEBUG("[D] Sending %d:\n", bs->available());       
     
-    if(!_service->doPOST(_writeUrl.c_str(), bs, PSTR("text/plain"), 204, nullptr)) {
+    if(!_service->doPOST(_writeUrl.c_str(), bs.get(), PSTR("text/plain"), 204, nullptr)) {
         INFLUXDB_CLIENT_DEBUG("[D] error %d: %s\n", _service->getLastStatusCode(), _service->getLastErrorMessage().c_str());
     }
-    delete bs;
     _retryTime = _service->getLastRetryAfter();
     return _service->getLastStatusCode();
 }
@@ -608,17 +548,17 @@ static const char QueryDialect[] PROGMEM = "\
 static const char Params[] PROGMEM = ",\
 \"params\": {";
 
-FluxQueryResult InfluxDBClient::query(const String &fluxQuery) {
+FluxQueryResult InfluxDBClient::query(const std::string &fluxQuery) {
     return query(fluxQuery, QueryParams());
 }
 
-FluxQueryResult InfluxDBClient::query(const String &fluxQuery, QueryParams params) {
+FluxQueryResult InfluxDBClient::query(const std::string &fluxQuery, QueryParams params) {
     uint32_t rwt = getRemainingRetryTime();
     if(rwt > 0) {
         INFLUXDB_CLIENT_DEBUG("[W] Cannot query yet, pause %ds, %ds yet\n", _retryTime, rwt);
         // retry after period didn't run out yet
-        String mess = FPSTR(TooEarlyMessage);
-        mess += String(rwt);
+        std::string mess = TooEarlyMessage;
+        mess += std::to_string(rwt);
         mess += "s";
         return FluxQueryResult(mess);
     }
@@ -628,21 +568,19 @@ FluxQueryResult InfluxDBClient::query(const String &fluxQuery, QueryParams param
     INFLUXDB_CLIENT_DEBUG("[D] Query to %s\n", _queryUrl.c_str());
     INFLUXDB_CLIENT_DEBUG("[D] JSON query:\n%s\n", fluxQuery.c_str());
 
-    String queryEsc = escapeJSONString(fluxQuery);
-    String body;
+    auto queryEsc = escapeJSONString(fluxQuery);
+    std::string body;
     body.reserve(150 + queryEsc.length() + params.size()*30);
-    body = F("{\"type\":\"flux\",\"query\":\"");
+    body = "{\"type\":\"flux\",\"query\":\"";
     body +=  queryEsc;
     body += "\",";
-    body += FPSTR(QueryDialect);
+    body += QueryDialect;
     if(params.size()) {
-        body += FPSTR(Params);
+        body += Params;
         body += params.jsonString(0);
-        for(int i=1;i<params.size();i++) {
+        for(auto i = 1; i < params.size(); i++) {
             body +=",";
-            char *js = params.jsonString(i);
-            body += js;
-            delete [] js;
+            body += params.jsonString(i);
         }
         body += '}';
     }
@@ -653,8 +591,10 @@ FluxQueryResult InfluxDBClient::query(const String &fluxQuery, QueryParams param
     if(_service->doPOST(_queryUrl.c_str(), body.c_str(), PSTR("application/json"), 200, [&](HTTPClient *httpClient){
         bool chunked = false;
         if(httpClient->hasHeader(TransferEncoding)) {
-            String header = httpClient->header(TransferEncoding);
-            chunked = header.equalsIgnoreCase("chunked");
+            std::string header = httpClient->header(TransferEncoding).c_str();
+            std::transform(header.begin(), header.end(), header.begin(),
+                [](unsigned char c){ return std::tolower(c); });
+            chunked = header == "chunked";
         }
         INFLUXDB_CLIENT_DEBUG("[D] chunked: %s\n", bool2string(chunked));
         HttpStreamScanner *scanner = new HttpStreamScanner(httpClient, chunked);
@@ -669,13 +609,14 @@ FluxQueryResult InfluxDBClient::query(const String &fluxQuery, QueryParams param
 }
 
 
-static String escapeJSONString(const String &value) {
-    String ret;
+static std::string escapeJSONString(const std::string &value) {
+    std::string ret;
     int d = 0;
-    int i,from = 0;
-    while((i = value.indexOf('"',from)) > -1) {
+    int from = 0;
+    size_t i;
+    while((i = value.find('"',from)) != std::string::npos) {
         d++;
-        if(i == (int)value.length()-1) {
+        if(i == value.length()-1) {
             break;
         }
         from = i+1;
@@ -712,9 +653,11 @@ InfluxDBClient::BatchStreamer::BatchStreamer(InfluxDBClient::Batch *batch) {
     _length = 0;
     _pointer = 0;
     _linePointer = 0;
-    for(uint16_t i=0;i<_batch->pointer;i++) {
-        _length += strlen(_batch->buffer[i])+1;
-    }
+    std::for_each(_batch->buffer.begin(), _batch->buffer.end(),
+        [this](const std::string& b) {
+        _length += b.length();
+        yield();
+    });
 }
 
 int InfluxDBClient::BatchStreamer::available() {

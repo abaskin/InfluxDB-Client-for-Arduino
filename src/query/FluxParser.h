@@ -27,10 +27,11 @@
 #ifndef _FLUX_PARSER_H_
 #define _FLUX_PARSER_H_
 
+#include <memory>
 #include <vector>
+
 #include "CsvReader.h"
 #include "FluxTypes.h"
-
 
 /**
  * FluxQueryResult represents result from InfluxDB flux query.
@@ -54,7 +55,7 @@ public:
     // Constructor for reading result
     FluxQueryResult(CsvReader *reader);
     // Constructor for error result
-    FluxQueryResult(const String &error);
+    FluxQueryResult(const std::string &error);
     // Copy constructor
     FluxQueryResult(const FluxQueryResult &other);
     // Assignment operator
@@ -64,15 +65,15 @@ public:
     // or an error. Call getError() and check non empty value
     bool next();
     // Returns index of the column, or -1 if not found
-    int getColumnIndex(const String &columnName);
+    int getColumnIndex(const std::string &columnName);
     // Returns a converted value by index, or nullptr in case of missing value or wrong index
     FluxValue getValueByIndex(int index);
     // Returns a result value by column name, or nullptr in case of missing value or wrong column name
-    FluxValue getValueByName(const String &columnName);
+    FluxValue getValueByName(const std::string &columnName);
     // Returns flux datatypes of all columns
-    std::vector<String> getColumnsDatatype() { return _data->_columnDatatypes; }
+    std::vector<std::string> getColumnsDatatype() { return _data->_columnDatatypes; }
     // Returns names of all columns
-    std::vector<String> getColumnsName()  { return  _data->_columnNames; }
+    std::vector<std::string> getColumnsName()  { return  _data->_columnNames; }
     // Returns all values from current row
     std::vector<FluxValue> getValues() { return  _data->_columnValues; }
     // Returns true if new table was encountered
@@ -80,14 +81,14 @@ public:
     // Returns current table position in the results set
     int getTablePosition() const { return _data->_tablePosition; }
     // Returns an error found during parsing if any, othewise empty string
-    String getError() { return  _data->_error; }
+    std::string getError() { return  _data->_error; }
     // Releases all resources and closes server reponse. It must be always called at end of reading.
     void close();
     // Descructor
     ~FluxQueryResult();
 protected:
-    FluxBase *convertValue(String &value, String &dataType);
-    static FluxDateTime *convertRfc3339(String &value, const char *type);
+    FluxBase *convertValue(std::string &value, std::string &dataType);
+    static FluxDateTime *convertRfc3339(std::string &value, const char *type);
     void clearValues();
     void clearColumns();
 private:
@@ -95,13 +96,13 @@ private:
     public:
         Data(CsvReader *reader);
         ~Data();
-        CsvReader *_reader;
+        std::unique_ptr<CsvReader> _reader;
         int _tablePosition = -1;
         bool _tableChanged = false;
-        std::vector<String> _columnDatatypes;
-        std::vector<String> _columnNames;
+        std::vector <std::string> _columnDatatypes;
+        std::vector<std::string> _columnNames;
         std::vector<FluxValue> _columnValues;
-        String _error;
+        std::string _error;
     };
     std::shared_ptr<Data> _data;
 };

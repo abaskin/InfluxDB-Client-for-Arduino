@@ -27,8 +27,11 @@
 #ifndef _CSV_READER_
 #define _CSV_READER_
 
-#include "HttpStreamScanner.h"
+#include <memory>
+#include <string>
 #include <vector>
+
+#include "HttpStreamScanner.h"
 
 /**
  * CsvReader parses csv line to token by ',' (comma) character.
@@ -40,12 +43,12 @@ public:
     ~CsvReader();
     bool next();
     void close();
-    std::vector<String> getRow();
+    std::vector<std::string> getRow();
     int getError() const { return _error; };
 private:
     void clearRow();
-    HttpStreamScanner *_scanner = nullptr;
-    std::vector<String> _row;
+    std::unique_ptr<HttpStreamScanner> _scanner;
+    std::vector<std::string> _row;
     int _error = 0;
 };
 #endif //_CSV_READER_

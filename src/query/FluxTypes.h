@@ -29,6 +29,7 @@
 
 #include <Arduino.h>
 #include <memory>
+#include <string>
 
 /** Supported flux types:
  *  - long - converts to long
@@ -37,7 +38,7 @@
  *  - bool  - converts to bool
  *  - dateTime:RFC3339 - converts to FluxDataTime
  *  - dateTime:RFC3339Nano - converts to FluxDataTime
- *  other types defaults to String
+ *  other types defaults to std::string
  */
 
 extern const char	*FluxDatatypeString;
@@ -53,11 +54,11 @@ extern const char	*FluxDatatypeDatetimeRFC3339Nano;
 // Base type for all specific flux types
 class FluxBase {
 protected:
-    String _rawValue;
+    std::string _rawValue;
 public:
-    FluxBase(const String &rawValue);
+    FluxBase(const std::string &rawValue);
     virtual ~FluxBase();
-    String getRawValue() const { return _rawValue; }
+    std::string getRawValue() const { return _rawValue; }
     virtual const char *getType() = 0;
     virtual char *jsonString() = 0;
 };
@@ -65,7 +66,7 @@ public:
 // Represents flux long
 class FluxLong : public FluxBase {
 public:
-    FluxLong(const String &rawValue, long value);
+    FluxLong(const std::string &rawValue, long value);
     long value;
     virtual const char *getType() override;
     virtual char *jsonString() override;
@@ -74,7 +75,7 @@ public:
 // Represents flux unsignedLong
 class FluxUnsignedLong : public FluxBase {
 public:
-    FluxUnsignedLong(const String &rawValue, unsigned long value);
+    FluxUnsignedLong(const std::string &rawValue, unsigned long value);
     unsigned long value;
     virtual const char *getType() override;
     virtual char *jsonString() override;
@@ -83,8 +84,8 @@ public:
 // Represents flux double
 class FluxDouble : public FluxBase {
 public:
-    FluxDouble(const String &rawValue, double value);
-    FluxDouble(const String &rawValue, double value, int precision);
+    FluxDouble(const std::string &rawValue, double value);
+    FluxDouble(const std::string &rawValue, double value, int precision);
     double value;
     // For JSON serialization
     int precision;
@@ -95,7 +96,7 @@ public:
 // Represents flux bool
 class FluxBool : public FluxBase {
 public:
-    FluxBool(const String &rawValue, bool value);
+    FluxBool(const std::string &rawValue, bool value);
     bool value;
     virtual const char *getType() override;
     virtual char *jsonString() override;
@@ -109,14 +110,14 @@ class FluxDateTime : public FluxBase {
 protected:
     const char *_type;
 public:    
-    FluxDateTime(const String &rawValue, const char *type, struct tm value, unsigned long microseconds);
+    FluxDateTime(const std::string &rawValue, const char *type, struct tm value, unsigned long microseconds);
     // Struct tm for date and time
     struct tm value;
     // microseconds part
     unsigned long microseconds;
     // Formats the value part to string according to the given format. Microseconds are skipped.
     // Format string must be compatible with the http://www.cplusplus.com/reference/ctime/strftime/
-    String format(const String &formatString);
+    std::string format(const std::string &formatString);
     virtual const char *getType() override;
     virtual char *jsonString() override;
 };
@@ -126,9 +127,9 @@ class FluxString : public FluxBase {
 protected:
     const char *_type;
 public:
-    FluxString(const String &rawValue, const char *type);
-    FluxString(const String &rawValue, const String &value, const char *type);
-    String value;
+    FluxString(const std::string &rawValue, const char *type);
+    FluxString(const std::string &rawValue, const std::string &value, const char *type);
+    std::string value;
     virtual const char *getType() override;
     virtual char *jsonString() override;
 };
@@ -158,7 +159,7 @@ public:
     // Check if value represent null - not present - value.
     bool isNull();
     // Returns a value of string, base64binary or duration type column, or empty string if column is a different type.
-    String getString();
+    std::string getString();
     // Returns a value of long type column, or zero if column is a different type.
     long getLong();
     // Returns a value of unsigned long type column, or zero if column is a different type.
@@ -170,7 +171,7 @@ public:
     // Returns a value of double type column, or 0.0 if column is a different type.
     double getDouble();
     // Returns a value in the original string form, as presented in the response.
-    String getRawValue();
+    std::string getRawValue();
 private:    
     std::shared_ptr<FluxBase> _data;
 };

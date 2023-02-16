@@ -74,10 +74,10 @@ void setup() {
   // Check server connection
   if (client.validateConnection()) {
     Serial.print("Connected to InfluxDB: ");
-    Serial.println(client.getServerUrl());
+    Serial.println(client.getServerUrl().c_str());
   } else {
     Serial.print("InfluxDB connection failed: ");
-    Serial.println(client.getLastErrorMessage());
+    Serial.println(client.getLastErrorMessage().c_str());
   }
 }
 
@@ -96,7 +96,7 @@ void loop() {
   // Parameters are accessed via the 'params' Flux object
   // Flux only supports only string, float and int as parameters. Duration can be converted from string.
   // Query will find RSSI less than defined treshold
-  String query = "from(bucket: params.bucket) |> range(start: duration(v: params.since)) \
+  std::string query = "from(bucket: params.bucket) |> range(start: duration(v: params.since)) \
     |> filter(fn: (r) => r._measurement == \"wifi_status\") \
     |> filter(fn: (r) => r._field == \"rssi\") \
     |> filter(fn: (r) => r.device == params.device) \
@@ -105,7 +105,7 @@ void loop() {
   // Print ouput header
   // Print composed query
   Serial.print("Querying with: ");
-  Serial.println(query);
+  Serial.println(query.c_str());
 
   // Send query to the server and get result
   FluxQueryResult result = client.query(query, params);
@@ -122,7 +122,7 @@ void loop() {
   int c = 0;
   while (result.next()) {
     // Get converted value for flux result column 'SSID'
-    String ssid = result.getValueByName("SSID").getString();
+    String ssid = result.getValueByName("SSID").getString().c_str();
    
     // Get converted value for flux result column '_value' where there is RSSI value
     long rssi = result.getValueByName("_value").getLong();
@@ -132,7 +132,7 @@ void loop() {
 
     // Format date-time for printing
     // Format string according to http://www.cplusplus.com/reference/ctime/strftime/
-    String timeStr = time.format("%F %T");
+    auto timeStr = time.format("%F %T");
     // Print formatted row
     Serial.printf("%20s %10s %5d\n", timeStr.c_str(), ssid.c_str() ,rssi);
     c++;
@@ -144,7 +144,7 @@ void loop() {
   // Check if there was an error
   if(result.getError() != "") {
     Serial.print("Query result error: ");
-    Serial.println(result.getError());
+    Serial.println(result.getError().c_str());
   }
 
   // Close the result

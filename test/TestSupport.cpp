@@ -32,6 +32,8 @@
 # include <HTTPClient.h>
 #endif
 
+#include <sstream>
+
 #include "TestSupport.h"
 
 static HTTPClient httpClient;
@@ -41,26 +43,26 @@ void printFreeHeap() {
   Serial.println(ESP.getFreeHeap());
 }
 
-int httpPOST(const String &url, String mess) {
+int httpPOST(const std::string &url, std::string mess) {
   httpClient.setReuse(false);
   int code = 0;
   WiFiClient client;
-  if(httpClient.begin(client, url)) {
-    code = httpClient.POST(mess);
+  if(httpClient.begin(client, url.c_str())) {
+    code = httpClient.POST(mess.c_str());
     httpClient.end();
   }
   return code;
 }
 
-int httpGET(const String &url) {
+int httpGET(const std::string &url) {
   httpClient.setReuse(false);
   int code = 0;
   WiFiClient client;
-  if(httpClient.begin(client, url)) {
+  if(httpClient.begin(client, url.c_str())) {
     code = httpClient.GET();
     if(code != 204) {
        //Serial.print("[TD] ");
-       //String res = http.getString();
+       //std::string res = http.getString();
        //Serial.println(res);
     }
     httpClient.end();
@@ -68,21 +70,21 @@ int httpGET(const String &url) {
   return code;
 }
 
-bool deleteAll(const String &url) {
+bool deleteAll(const std::string &url) {
   if(WiFi.isConnected()) {
     return httpPOST(url + "/api/v2/delete","") == 204;
   }
   return false;
 }
 
-bool serverLog(const String &url, String mess) {
+bool serverLog(const std::string &url, std::string mess) {
   if(WiFi.isConnected()) {
     return httpPOST(url + "/log", mess) == 204;
   } 
   return false;
 }
 
-bool isServerUp(const String &url) {
+bool isServerUp(const std::string &url) {
   if(WiFi.isConnected()) {
     return httpGET(url + "/status") == 200;
   }
@@ -90,31 +92,17 @@ bool isServerUp(const String &url) {
 }
 
 
-int countParts(const String &str, char separator) {
-  int lines = 0;
-  int i,from = 0;
-  while((i = str.indexOf(separator, from)) >= 0) {
-    ++lines;
-    from = i+1;
-  }
-  // try last part
-  if(from < str.length() && str.substring(from).length()>0) {
-    ++lines;
-  }
-  return lines;
+int countParts(const std::string &str, char separator) {
+  return getParts(str, separator).size();
 }
 
-String *getParts(const String &str, char separator, int &count) {
-  count = countParts(str, separator);
-  String *ret = new String[count];
-  int i,from = 0,p=0;
-  while((i = str.indexOf(separator, from)) >= 0) {
-    ret[p++] = str.substring(from,i);
-    from = i+1;
-  }
-  // try last part
-  if(from < str.length() && str.substring(from).length()>0) {
-    ret[p] = str.substring(from);
+std::vector<std::string> getParts(const std::string &str, char separator) {
+  std::vector<std::string> ret;
+  std::stringstream ss(str);
+  std::string word;
+  while (!ss.eof()) {
+    getline(ss, word, separator);
+    ret.emplace_back(word);
   }
   return ret;
 }
@@ -128,10 +116,10 @@ int countLines(FluxQueryResult flux) {
   return lines;
 }
 
-std::vector<String> getLines(FluxQueryResult flux) {
-  std::vector<String> lines;
+std::vector<std::string> getLines(FluxQueryResult flux) {
+  std::vector<std::string> lines;
   while(flux.next()) {
-    String line;
+    std::string line;
     int i=0;
     for(auto &val: flux.getValues()) {
       if(i>0) line += ",";
@@ -151,7 +139,7 @@ bool compareTm(tm &tm1, tm &tm2) {
     return difftime(t1, t2) == 0;
 } 
 
-bool waitServer(const String &url, bool state) {
+bool waitServer(const std::string &url, bool state) {
     int i = 0;
     while(isServerUp(url) != state && i<10 ) {
         if(!i) {

@@ -62,15 +62,15 @@ void setup() {
 
   // Add constant tags - only once
   sensor.addTag("device", DEVICE);
-  sensor.addTag("SSID", WiFi.SSID());
+  sensor.addTag("SSID", WiFi.SSID().c_str());
 
   // Check server connection
   if (client.validateConnection()) {
     Serial.print("Connected to InfluxDB: ");
-    Serial.println(client.getServerUrl());
+    Serial.println(client.getServerUrl().c_str());
   } else {
     Serial.print("InfluxDB connection failed: ");
-    Serial.println(client.getLastErrorMessage());
+    Serial.println(client.getLastErrorMessage().c_str());
   }
 }
 
@@ -81,7 +81,7 @@ void loop() {
   sensor.addField("rssi", WiFi.RSSI());
   // Print what are we exactly writing
   Serial.print("Writing: ");
-  Serial.println(client.pointToLineProtocol(sensor));
+  Serial.println(client.pointToLineProtocol(sensor).c_str());
   // If no Wifi signal, try to reconnect it
   if (wifiMulti.run() != WL_CONNECTED) {
     Serial.println("Wifi connection lost");
@@ -89,7 +89,7 @@ void loop() {
   // Write point
   if (!client.writePoint(sensor)) {
     Serial.print("InfluxDB write failed: ");
-    Serial.println(client.getLastErrorMessage());
+    Serial.println(client.getLastErrorMessage().c_str());
   }
 
   //Wait 10s

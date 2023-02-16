@@ -24,6 +24,8 @@ ESP8266WiFiMulti wifiMulti;
 #include <InfluxDbClient.h>
 #include <InfluxDbCloud.h>
 
+#include <string>
+
 // WiFi AP SSID
 #define WIFI_SSID "SSID"
 // WiFi password
@@ -75,10 +77,10 @@ void setup() {
   // Check server connection
   if (client.validateConnection()) {
     Serial.print("Connected to InfluxDB: ");
-    Serial.println(client.getServerUrl());
+    Serial.println(client.getServerUrl().c_str());
   } else {
     Serial.print("InfluxDB connection failed: ");
-    Serial.println(client.getLastErrorMessage());
+    Serial.println(client.getLastErrorMessage().c_str());
   }
 }
 
@@ -98,21 +100,21 @@ void loop() {
 
 // printAgregateResult queries db for aggregated RSSI value computed by given InfluxDB selector function (max, mean, min)
 // Prints composed query and the result values.
-void printAgregateResult(String selectorFunction) {
+void printAgregateResult(std::string selectorFunction) {
   // Construct a Flux query
   // Query will find RSSI for last hour for each connected WiFi network with this device computed by given selector function
-  String query = "from(bucket: \"" INFLUXDB_BUCKET "\") |> range(start: -1h) |> filter(fn: (r) => r._measurement == \"wifi_status\" and r._field == \"rssi\"";
+  std::string query = "from(bucket: \"" INFLUXDB_BUCKET "\") |> range(start: -1h) |> filter(fn: (r) => r._measurement == \"wifi_status\" and r._field == \"rssi\"";
   query += " and r.device == \""  DEVICE  "\")";
   query += "|> " + selectorFunction + "()";
 
   // Print ouput header
   Serial.print("==== ");
-  Serial.print(selectorFunction);
+  Serial.print(selectorFunction.c_str());
   Serial.println(" ====");
 
   // Print composed query
   Serial.print("Querying with: ");
-  Serial.println(query);
+  Serial.println(query.c_str());
 
   // Send query to the server and get result
   FluxQueryResult result = client.query(query);
@@ -120,7 +122,7 @@ void printAgregateResult(String selectorFunction) {
   // Iterate over rows. Even there is just one row, next() must be called at least once.
   while (result.next()) {
     // Get converted value for flux result column 'SSID'
-    String ssid = result.getValueByName("SSID").getString();
+    String ssid = result.getValueByName("SSID").getString().c_str();
     Serial.print("SSID '");
     Serial.print(ssid);
 
@@ -141,10 +143,10 @@ void printAgregateResult(String selectorFunction) {
 
       // Format date-time for printing
       // Format string according to http://www.cplusplus.com/reference/ctime/strftime/
-      String timeStr = time.format("%F %T");
+      auto timeStr = time.format("%F %T");
 
       Serial.print(" at ");
-      Serial.print(timeStr);
+      Serial.print(timeStr.c_str());
     }
 
     
@@ -154,7 +156,7 @@ void printAgregateResult(String selectorFunction) {
   // Check if there was an error
   if(result.getError() != "") {
     Serial.print("Query result error: ");
-    Serial.println(result.getError());
+    Serial.println(result.getError().c_str());
   }
 
   // Close the result

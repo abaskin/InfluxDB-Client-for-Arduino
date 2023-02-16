@@ -38,16 +38,13 @@ const char	*FluxBinaryDataTypeBase64         = "base64Binary";
 const char	*FluxDatatypeDatetimeRFC3339      = "dateTime:RFC3339";
 const char	*FluxDatatypeDatetimeRFC3339Nano  = "dateTime:RFC3339Nano";
 
-FluxBase::FluxBase(const String &rawValue):_rawValue(rawValue) {
-}
+FluxBase::FluxBase(const std::string &rawValue):_rawValue(rawValue) {}
 
-FluxBase::~FluxBase() {
-}
+FluxBase::~FluxBase() {}
 
 
-FluxLong::FluxLong(const String &rawValue, long value):FluxBase(rawValue),value(value) {
-
-}
+FluxLong::FluxLong(const std::string &rawValue, long value)
+    : FluxBase(rawValue),value(value) {}
 
 const char *FluxLong::getType() {
     return FluxDatatypeLong;
@@ -56,13 +53,14 @@ const char *FluxLong::getType() {
 char *FluxLong::jsonString() {
     int len  =_rawValue.length()+3+getNumLength(value)+2;
     char *json = new char[len+1];
-    snprintf_P(json, len, PSTR("\"%s\":%ld"), _rawValue.c_str(), value);
+    snprintf_P(json, len, PSTR(R"("%s":%ld)"), _rawValue.c_str(),
+               value);
     return json;
 }
 
 
-FluxUnsignedLong::FluxUnsignedLong(const String &rawValue, unsigned long value):FluxBase(rawValue),value(value) {
-}
+FluxUnsignedLong::FluxUnsignedLong(const std::string &rawValue, unsigned long value)
+    : FluxBase(rawValue),value(value) { }
 
 const char *FluxUnsignedLong::getType() {
     return FluxDatatypeUnsignedLong;
@@ -71,16 +69,15 @@ const char *FluxUnsignedLong::getType() {
 char *FluxUnsignedLong::jsonString() {
   int len  =_rawValue.length()+3+getNumLength(value)+2;
   char *json = new char[len+1];
-  snprintf_P(json,len, PSTR("\"%s\":%lu"), _rawValue.c_str(), value);
+  snprintf_P(json, len, PSTR(R"("%s":%lu)"), _rawValue.c_str(), value);
   return json;
 }
 
-FluxDouble::FluxDouble(const String &rawValue, double value):FluxDouble(rawValue, value, 0) {
-   
-}
+FluxDouble::FluxDouble(const std::string &rawValue, double value)
+    : FluxDouble(rawValue, value, 0) {}
 
-FluxDouble::FluxDouble(const String &rawValue, double value, int precision):FluxBase(rawValue),
-  value(value),precision(precision) {}
+FluxDouble::FluxDouble(const std::string &rawValue, double value, int precision)
+    : FluxBase(rawValue), value(value),precision(precision) {}
 
 const char *FluxDouble::getType() {
     return FluxDatatypeDouble;
@@ -90,12 +87,12 @@ char *FluxDouble::jsonString() {
     int len = _rawValue.length()+3+getNumLength(value)+precision+2;
     char *json = new char[len+1];
     char format[10];
-    sprintf_P(format, PSTR("\"%%s\":%%.%df"), precision);
+    sprintf_P(format, PSTR(R"("%%s":%%.%df)"), precision);
     snprintf(json, len, format , _rawValue.c_str(), value);
     return json;
 }
 
-FluxBool::FluxBool(const String &rawValue, bool value):FluxBase(rawValue),value(value) {   
+FluxBool::FluxBool(const std::string &rawValue, bool value):FluxBase(rawValue),value(value) {   
 }
 
 const char *FluxBool::getType() {
@@ -105,12 +102,12 @@ const char *FluxBool::getType() {
 char *FluxBool::jsonString() {
     int len = _rawValue.length()+9;
     char *json = new char[len+1];
-    snprintf_P(json, len, PSTR("\"%s\":%s"), _rawValue.c_str(), bool2string(value));
+    snprintf_P(json, len, PSTR(R"("%s":%s)"), _rawValue.c_str(), bool2string(value));
     return json;
 }
 
 
-FluxDateTime::FluxDateTime(const String &rawValue, const char *type, struct tm value, unsigned long microseconds):FluxBase(rawValue),_type(type),value(value), microseconds(microseconds) {
+FluxDateTime::FluxDateTime(const std::string &rawValue, const char *type, struct tm value, unsigned long microseconds):FluxBase(rawValue),_type(type),value(value), microseconds(microseconds) {
 
 }
 
@@ -118,19 +115,17 @@ const char *FluxDateTime::getType() {
     return _type;
 }
 
-String FluxDateTime::format(const String &formatString) {
+std::string FluxDateTime::format(const std::string &formatString) {
   int len = formatString.length() + 20; //+20 for safety
-  char *buff = new char[len];
-  strftime(buff,len, formatString.c_str(),&value);
-  String str = buff;
-  delete [] buff;
-  return str;
+  std::unique_ptr<char[]> buff { new char[len] };
+  strftime(buff.get(), len, formatString.c_str(),&value);
+  return std::string { buff.get() };
 }
 
 char *FluxDateTime::jsonString() {
   int len = _rawValue.length()+3+21+(microseconds?10:0); 
   char *buff = new char[len+1];
-  snprintf_P(buff, len, PSTR("\"%s\":\""), _rawValue.c_str());
+  snprintf_P(buff, len, PSTR(R"("%s":")"), _rawValue.c_str());
   strftime(buff+strlen(buff), len-strlen(buff), "%FT%T",&value);
   if(microseconds) {
     snprintf_P(buff+strlen(buff), len - strlen(buff), PSTR(".%06luZ"), microseconds); 
@@ -139,14 +134,11 @@ char *FluxDateTime::jsonString() {
   return buff;
 }
 
-FluxString::FluxString(const String &rawValue, const char *type):FluxString(rawValue, rawValue, type) {
+FluxString::FluxString(const std::string &rawValue, const char *type)
+    : FluxString(rawValue, rawValue, type) {}
 
-}
-
-FluxString::FluxString(const String &rawValue, const String &value, const char *type):FluxBase(rawValue),_type(type),value(value)
-{
-
-}
+FluxString::FluxString(const std::string &rawValue, const std::string &value, const char *type)
+    : FluxBase(rawValue),_type(type),value(value) {}
 
 const char *FluxString::getType() {
   return _type;
@@ -155,16 +147,14 @@ const char *FluxString::getType() {
 char *FluxString::jsonString() {
   int len = _rawValue.length()+value.length()+7;
   char *buff = new char[len+1];
-  snprintf(buff, len, "\"%s\":\"%s\"", _rawValue.c_str(), value.c_str());
+  snprintf_P(buff, len, PSTR(R"("%s":"%s")"), _rawValue.c_str(), value.c_str());
   return buff;
 }
 
 
 FluxValue::FluxValue() {}
 
-FluxValue::FluxValue(FluxBase *fluxValue):_data(fluxValue) {
-    
-}
+FluxValue::FluxValue(FluxBase *fluxValue) : _data(fluxValue) {}
 
 FluxValue::FluxValue(const FluxValue &other) {
     _data = other._data;
@@ -178,8 +168,11 @@ FluxValue& FluxValue::operator=(const FluxValue& other) {
 }
 
 // Type accessor. If value is different type zero value for given time is returned.
-String FluxValue::getString() {
-    if(_data && (_data->getType() == FluxDatatypeString ||_data->getType() == FluxDatatypeDuration || _data->getType() == FluxBinaryDataTypeBase64)) {
+std::string FluxValue::getString() {
+    if(_data && (
+       _data->getType() == FluxDatatypeString ||
+       _data->getType() == FluxDatatypeDuration || 
+       _data->getType() == FluxBinaryDataTypeBase64)) {
             FluxString *s = (FluxString *)_data.get();
             return s->value;
         }
@@ -227,7 +220,7 @@ double FluxValue::getDouble() {
 }
 
 // returns string representation of non-string values
-String FluxValue::getRawValue() {
+std::string FluxValue::getRawValue() {
     if(_data) {
         return _data->getRawValue();
     }

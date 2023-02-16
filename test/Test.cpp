@@ -26,11 +26,15 @@
 */
 
 #include "Test.h"
-#include "TestSupport.h"
 
 #include <Platform.h>
+
+#include <array>
+#include <memory>
+
 #include "../src/Version.h"
 #include "InfluxData.h"
+#include "TestSupport.h"
 
 #define INFLUXDB_CLIENT_TESTING_BAD_URL "http://127.0.0.1:999"
 
@@ -85,17 +89,17 @@ void Test::run() {
     testBuckets(); 
     testQueryWithParams();
     Serial.printf("Tests %s\n", failures ? "FAILED" : "SUCCEEDED");
-    serverLog(TestBase::managementUrl, String("Tests ") + (failures ? "FAILED" : "SUCCEEDED"));
+    serverLog(TestBase::managementUrl, (std::string("Tests ") + (failures ? "FAILED" : "SUCCEEDED")).c_str());
 }
 
 void Test::testUtils() {
     TEST_INIT("testUtils");
     int d = getNumLength(12345678901);
-    TEST_ASSERTM(d == 11, String(d));
+    TEST_ASSERTM(d == 11, std::to_string(d));
     d = getNumLength(1);
-    TEST_ASSERTM(d == 1, String(d));
+    TEST_ASSERTM(d == 1, std::to_string(d));
     d = getNumLength(12);
-    TEST_ASSERTM(d == 2, String(d));
+    TEST_ASSERTM(d == 2, std::to_string(d));
     TEST_END();
 }
 
@@ -171,18 +175,18 @@ void Test::testOptions() {
     c.setWriteOptions(WritePrecision::MS, 15, 14, 70, false);
     TEST_ASSERT(c._writeOptions._writePrecision == WritePrecision::MS);
     TEST_ASSERT(c._writeOptions._batchSize == 15);
-    TEST_ASSERTM(c._writeOptions._bufferSize == 30, String(c._writeOptions._bufferSize));
+    TEST_ASSERTM(c._writeOptions._bufferSize == 30, std::to_string(c._writeOptions._bufferSize));
     TEST_ASSERT(c._writeOptions._flushInterval == 70);
     TEST_ASSERT(!c._service->_httpOptions._connectionReuse);
     TEST_ASSERT(c._service->_httpOptions._httpReadTimeout == 20000);
 
     defWO = WriteOptions().batchSize(100).bufferSize(7000);
     c.setWriteOptions(defWO);
-    TEST_ASSERTM(c._writeBufferSize == 70, String(c._writeBufferSize));
+    TEST_ASSERTM(c._writeBufferSize == 70, std::to_string(c._writeBufferSize));
 
     defWO = WriteOptions().batchSize(10).bufferSize(7000);
     c.setWriteOptions(defWO);
-    TEST_ASSERTM(c._writeBufferSize == 255, String(c._writeBufferSize));
+    TEST_ASSERTM(c._writeBufferSize == 255, std::to_string(c._writeBufferSize));
 
     TEST_END();
 }
@@ -210,7 +214,7 @@ void Test::testEcaping() {
 
     InfluxDBClient client;
     
-    String line = p.toLineProtocol();
+    auto line = p.toLineProtocol();
     const char *lp = "t\\\re=s\\\nt\\\t_t\\ e\"s\\,t,ta\\=g=val\\=ue,ta\\\tg=val\\\tue,ta\\\rg=val\\\rue,ta\\\ng=val\\\nue,ta\\ g=valu\\ e,ta\\,g=valu\\,e,tag=value,ta\"g=val\"ue fie\\=ld=\"val=ue\",fie\\\tld=\"val\tue\",fie\\\rld=\"val\rue\",fie\\\nld=\"val\nue\",fie\\ ld=\"val ue\",fie\\,ld=\"val,ue\",fie\"ld=\"val\\\"ue\"";
     TEST_ASSERTM(line == lp, line);
     line = client.pointToLineProtocol(p);
@@ -238,10 +242,10 @@ void Test::testPoint() {
     Point p("test");
     TEST_ASSERT(!p.hasTags());
     TEST_ASSERT(!p.hasFields());
-    String name = "tag3";
-    String value = "tagvalue3";
+    std::string name = "tag3";
+    std::string value = "tagvalue3";
     p.addTag("tag1", "tagvalue");
-    p.addTag(F("tag2"), F("tagvalue2"));
+    p.addTag("tag2", "tagvalue2");
     p.addTag(name, value);
     TEST_ASSERT(p.hasTags());
     TEST_ASSERT(!p.hasFields());
@@ -250,7 +254,7 @@ void Test::testPoint() {
     p.addField("fieldBool", true);
     p.addField("fieldFloat1", 1.123f);
     p.addField("fieldFloat2", 1.12345f, 5);
-    p.addField(F("fieldDouble1"), 1.123);
+    p.addField("fieldDouble1", 1.123);
     name = "fieldDouble2";
     p.addField(name, 1.12345, 5);
     p.addField("fieldChar", 'A');
@@ -261,15 +265,15 @@ void Test::testPoint() {
     p.addField("fieldLongLong", 9123456789l);
     p.addField("fieldULongLong", 9123456789ul);
     p.addField("fieldString", "text test");
-    p.addField(F("fieldString2"), F("text test2"));
+    p.addField("fieldString2", F("text test2"));
     name = "fieldString3";
     value = "text test3";
     p.addField(name, value);
-    String line = p.toLineProtocol();
-    String testLine = "test,tag1=tagvalue,tag2=tagvalue2,tag3=tagvalue3 fieldInt=-23i,fieldBool=true,fieldFloat1=1.12,fieldFloat2=1.12345,fieldDouble1=1.12,fieldDouble2=1.12345,fieldChar=\"A\",fieldUChar=1i,fieldUInt=23i,fieldLong=123456i,fieldULong=123456i,fieldLongLong=9123456789i,fieldULongLong=9123456789i,fieldString=\"text test\",fieldString2=\"text test2\",fieldString3=\"text test3\"";
+    auto line = p.toLineProtocol();
+    std::string testLine = "test,tag1=tagvalue,tag2=tagvalue2,tag3=tagvalue3 fieldInt=-23i,fieldBool=true,fieldFloat1=1.12,fieldFloat2=1.12345,fieldDouble1=1.12,fieldDouble2=1.12345,fieldChar=\"A\",fieldUChar=1i,fieldUInt=23i,fieldLong=123456i,fieldULong=123456i,fieldLongLong=9123456789i,fieldULongLong=9123456789i,fieldString=\"text test\",fieldString2=\"text test2\",fieldString3=\"text test3\"";
     TEST_ASSERTM(line == testLine, line);
 
-    String defaultTags="dtag=val";
+    std::string defaultTags = "dtag=val";
     line = p.toLineProtocol(defaultTags);
     testLine = "test,dtag=val,tag1=tagvalue,tag2=tagvalue2,tag3=tagvalue3 fieldInt=-23i,fieldBool=true,fieldFloat1=1.12,fieldFloat2=1.12345,fieldDouble1=1.12,fieldDouble2=1.12345,fieldChar=\"A\",fieldUChar=1i,fieldUInt=23i,fieldLong=123456i,fieldULong=123456i,fieldLongLong=9123456789i,fieldULongLong=9123456789i,fieldString=\"text test\",fieldString2=\"text test2\",fieldString3=\"text test3\"";
     TEST_ASSERTM(line == testLine, line);
@@ -291,9 +295,9 @@ void Test::testPoint() {
 
     TEST_ASSERT(!p.hasTime());
     time_t now = time(nullptr);
-    String snow(now);
+    auto snow{ std::to_string(now) };
     p.setTime(now);
-    String testLineTime = testLine + " " + snow;
+    std::string testLineTime = testLine + " " + snow;
     line = p.toLineProtocol();
     TEST_ASSERTM(line == testLineTime, line);
     
@@ -304,7 +308,7 @@ void Test::testPoint() {
     TEST_ASSERTM(line == testLineTime, line);
     now += 5;
     snow = "";
-    snow.concat(now);
+    snow.append(std::to_string(now));
     p.setTime(snow);
     testLineTime = testLine + " " + snow;
     line = p.toLineProtocol();
@@ -312,33 +316,32 @@ void Test::testPoint() {
 
     p.setTime(WritePrecision::S);
     line = p.toLineProtocol();
-    int partsCount;
-    String *parts = getParts(line, ' ', partsCount);
-    TEST_ASSERTM(partsCount == 3, String("3 != ") + partsCount);
+    auto parts = getParts(line, ' ');
+    auto partsCount { parts.size() };
+    TEST_ASSERTM(partsCount == 3, std::string("3 != ") + std::to_string(partsCount));
     TEST_ASSERTM(parts[2].length() == snow.length(), parts[2] + "," + snow);
-    delete[] parts;
 
     p.setTime(WritePrecision::MS);
     TEST_ASSERT(p.hasTime());
     line = p.toLineProtocol();
-    parts = getParts(line, ' ', partsCount);
+    parts = getParts(line, ' ');
+    partsCount = parts.size();
     TEST_ASSERT(partsCount == 3);
     TEST_ASSERT(parts[2].length() == snow.length() + 3);
-    delete[] parts;
 
     p.setTime(WritePrecision::US);
     line = p.toLineProtocol();
-    parts = getParts(line, ' ', partsCount);
+    parts = getParts(line, ' ');
+    partsCount = parts.size();
     TEST_ASSERT(partsCount == 3);
     TEST_ASSERT(parts[2].length() == snow.length() + 6);
-    delete[] parts;
 
     p.setTime(WritePrecision::NS);
     line = p.toLineProtocol();
-    parts = getParts(line, ' ', partsCount);
+    parts = getParts(line, ' ');
+    partsCount = parts.size();
     TEST_ASSERT(partsCount == 3);
     TEST_ASSERT(parts[2].length() == snow.length() + 9);
-    delete[] parts;
 
     p.clearFields();
     TEST_ASSERT(!p.hasFields());
@@ -360,9 +363,9 @@ void Test::testPoint() {
     Point p3("a");
     
     p3 = p2;
-    String lp = p2.toLineProtocol();
-    String lp2 = p3.toLineProtocol();
-    TEST_ASSERTM(lp == lp2, lp+","+lp2);
+    auto lp = p2.toLineProtocol();
+    auto lp2 = p3.toLineProtocol();
+    TEST_ASSERTM(lp == lp2, lp + "," + lp2);
 
     TEST_END();
 }
@@ -375,9 +378,9 @@ void Test::testOldAPI() {
     d.setTimestamp(1123456789l);
 
     p = d;
-    String lp = d.toString();
-    String lp2 = p.toString();
-    TEST_ASSERTM(lp == lp2, lp+","+lp2);
+    auto lp = d.toString();
+    auto lp2 = p.toString();
+    TEST_ASSERTM(lp == lp2, lp + "," + lp2);
 
     TEST_END();
 }
@@ -387,7 +390,7 @@ void Test::testBatch() {
     InfluxDBClient::Batch batch(2);
     TEST_ASSERT(batch._size == 2);
     TEST_ASSERT(batch.pointer == 0);
-    TEST_ASSERT(!batch.buffer[0]);
+    TEST_ASSERT(batch.buffer.empty());
     TEST_ASSERT(batch.isEmpty());
     TEST_ASSERT(!batch.isFull());
     const char *line = "air,location=Zdiby,sensor=STH31 temp=22.1,hum=44";
@@ -400,21 +403,21 @@ void Test::testBatch() {
     TEST_ASSERT(batch.pointer == 2);
 
     InfluxDBClient::BatchStreamer str(&batch);
-    int len = strlen(line);
+    auto len = strlen(line);
     TEST_ASSERT(str.available() == len*2+2);
     int size = str.available()+1;
-    char *buff = new char[size];
-    TEST_ASSERT(str.readBytes(buff, len+1) == len+1);
+    std::unique_ptr<char[]> buff { new char[size] };
+    TEST_ASSERT(str.readBytes(buff.get(), len+1) == len+1);
     TEST_ASSERT(str.peek() == 'a');
     TEST_ASSERT(str.available() == len+1);
-    TEST_ASSERT(str.readBytes(buff+len+1, len) == len);
+    TEST_ASSERT(str.readBytes(buff.get() + len + 1, len) == len);
     TEST_ASSERT(str.peek() == '\n');
     TEST_ASSERT(str.available() == 1);
-    TEST_ASSERT(str.readBytes(buff+2*len+1, 1) == 1);
+    TEST_ASSERT(str.readBytes(buff.get() + 2 * len + 1, 1) == 1);
     TEST_ASSERT(str.peek() == -1);
     TEST_ASSERT(str.available() == 0);
     buff[size-1] = 0;
-    Serial.println(buff);
+    Serial.println(buff.get());
     int i;
     for(i=0;i<strlen(line);i++) {
         TEST_ASSERT(buff[i] == line[i]);
@@ -429,14 +432,13 @@ void Test::testBatch() {
     //Test Stream API
     Stream *s  = &str;
     TEST_ASSERT(s->available() == len*2+2);
-    TEST_ASSERT(s->readBytes(buff, len+1) == len+1);
+    TEST_ASSERT(s->readBytes(buff.get(), len + 1) == len + 1);
     TEST_ASSERT(s->available() == len+1);
-    TEST_ASSERT(s->readBytes(buff+len+1, len) == len);
+    TEST_ASSERT(s->readBytes(buff.get() + len + 1, len) == len);
     TEST_ASSERT(s->available() == 1);
-    TEST_ASSERT(s->readBytes(buff+2*len+1, 1) == 1);
+    TEST_ASSERT(s->readBytes(buff.get() + 2 * len + 1, 1) == 1);
     TEST_ASSERT(s->available() == 0);
 
-    delete [] buff;
     TEST_END();
 }
 
@@ -461,8 +463,8 @@ void Test::testLineProtocol() {
     p.addField("fieldULongLong", 9123456789ul);
     p.addField("fieldString", "text test");
 
-    String line = client.pointToLineProtocol(p);
-    String testLine = "test,tag1=tagvalue fieldInt=-23i,fieldBool=true,fieldFloat1=1.12,fieldFloat2=1.12345,fieldDouble1=1.12,fieldDouble2=1.12345,fieldChar=\"A\",fieldUChar=1i,fieldUInt=23i,fieldLong=123456i,fieldULong=123456i,fieldLongLong=9123456789i,fieldULongLong=9123456789i,fieldString=\"text test\"";
+    auto line = client.pointToLineProtocol(p);
+    std::string testLine = "test,tag1=tagvalue fieldInt=-23i,fieldBool=true,fieldFloat1=1.12,fieldFloat2=1.12345,fieldDouble1=1.12,fieldDouble2=1.12345,fieldChar=\"A\",fieldUChar=1i,fieldUInt=23i,fieldLong=123456i,fieldULong=123456i,fieldLongLong=9123456789i,fieldULongLong=9123456789i,fieldString=\"text test\"";
     TEST_ASSERTM(line == testLine, line);
 
     auto opts = WriteOptions().addDefaultTag("dtag","val");
@@ -490,9 +492,9 @@ void Test::testLineProtocol() {
 
     TEST_ASSERT(!p.hasTime());
     time_t now = time(nullptr);
-    String snow(now);
+    auto snow { std::to_string(now) };
     p.setTime(now);
-    String testLineTime = testLine + " " + snow;
+    std::string testLineTime = testLine + " " + snow;
     line = client.pointToLineProtocol(p);
     TEST_ASSERTM(line == testLineTime, line);
     
@@ -512,39 +514,38 @@ void Test::testLineProtocol() {
 
     p.setTime(WritePrecision::S);
     line = client.pointToLineProtocol(p);
-    int partsCount;
-    String *parts = getParts(line, ' ', partsCount);
-    TEST_ASSERTM(partsCount == 3, String("3 != ") + partsCount);
+    auto parts = getParts(line, ' ');
+    auto partsCount = parts.size();
+    TEST_ASSERTM(partsCount == 3, std::string("3 != ") + std::to_string(partsCount));
     TEST_ASSERT(parts[2].length() == snow.length());
-    delete[] parts;
 
     p.setTime(WritePrecision::MS);
     TEST_ASSERT(p.hasTime());
     line = client.pointToLineProtocol(p);
-    parts = getParts(line, ' ', partsCount);
+    parts = getParts(line, ' ');
+    partsCount = parts.size();
     TEST_ASSERT(partsCount == 3);
     TEST_ASSERT(parts[2].length() == snow.length() + 3);
-    delete[] parts;
 
     p.setTime(WritePrecision::US);
     line = client.pointToLineProtocol(p);
-    parts = getParts(line, ' ', partsCount);
+    parts = getParts(line, ' ');
+    partsCount = parts.size();
     TEST_ASSERT(partsCount == 3);
     TEST_ASSERT(parts[2].length() == snow.length() + 6);
-    delete[] parts;
 
     p.setTime(WritePrecision::NS);
     line = client.pointToLineProtocol(p);
-    parts = getParts(line, ' ', partsCount);
+    parts = getParts(line, ' ');
+    partsCount = parts.size();
     TEST_ASSERT(partsCount == 3);
     TEST_ASSERT(parts[2].length() == snow.length() + 9);
-    delete[] parts;
 
     client.setWriteOptions(opts.useServerTimestamp(true));
     line = client.pointToLineProtocol(p);
-    parts = getParts(line, ' ', partsCount);
+    parts = getParts(line, ' ');
+    partsCount = parts.size();
     TEST_ASSERT(partsCount == 2);
-    delete [] parts;
 
     TEST_END();
 }
@@ -557,10 +558,9 @@ void Test::testBasicFunction() {
     TEST_ASSERT(client.isBufferEmpty());
     TEST_ASSERT(!client.validateConnection());
     for (int i = 0; i < 5; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p { createPoint("test1") };
         p->addField("index", i);
-        TEST_ASSERT(!client.writePoint(*p));
-        delete p;
+        TEST_ASSERT(!client.writePoint(*p.get()));
     }
     TEST_ASSERT(client.isBufferFull());
     TEST_ASSERT(!client.isBufferEmpty());
@@ -571,25 +571,23 @@ void Test::testBasicFunction() {
     
     TEST_ASSERT(waitServer(Test::managementUrl, true));
     for (int i = 0; i < 5; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERT(client.writePoint(*p));
-        delete p;
+        TEST_ASSERT(client.writePoint(*p.get()));
     }
     TEST_ASSERT(client.isBufferEmpty());
-    String query = "select";
+    std::string query { "select" };
     FluxQueryResult q = client.query(query);
     int count = countLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
-    TEST_ASSERTM( count == 5, String(count) + " vs 5");  //5 points
+    TEST_ASSERTM( count == 5, std::to_string(count) + " vs 5");  //5 points
 
     // test precision
     for (uint8_t i = (int)WritePrecision::NoTime; i <= (int)WritePrecision::NS; i++) {
         client.setWriteOptions((WritePrecision)i, 1);
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERTM(client.writePoint(*p), String("i=") + i);
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()), std::string("i=") + std::to_string(i));
     }
 
 
@@ -600,17 +598,17 @@ void Test::testBasicFunction() {
 bool checkLinesParts(InfluxDBClient &client, size_t lineCount, int partCount) {
     bool res = false;
     do {
-        String query = "select";
+        std::string query { "select" };
         FluxQueryResult q = client.query(query);
         TEST_ASSERTM(!q.getError().length(), q.getError());
-        std::vector<String> lines = getLines(q);
+        auto lines = getLines(q);
         auto count = lines.size();
-        TEST_ASSERTM( count == lineCount, String(count) + " vs " + String(lineCount));
+        TEST_ASSERTM(count == lineCount,
+                     std::to_string(count) + " vs " + std::to_string(lineCount));
         for(size_t i=0;i<count;i++) {
-            int partsCount;
-            String *parts = getParts(lines[i], ',', partsCount);
-            TEST_ASSERTM(partsCount == partCount, String(i) + ":" + lines[i]); 
-            delete[] parts;
+            auto parts = getParts(lines[i], ',');
+            auto partsCount { parts.size() };
+            TEST_ASSERTM(partsCount == partCount, std::to_string(i) + ":" + lines[i]); 
         }
         res = true;
     } while(0);
@@ -628,8 +626,8 @@ void Test::testUseServerTimestamp() {
     TEST_ASSERT(waitServer(Test::managementUrl, true));
 
     // test no precision, no timestamp
-    Point *p = createPoint("test1");
-    TEST_ASSERT(client.writePoint(*p));
+    std::unique_ptr<Point> p{createPoint("test1")};
+    TEST_ASSERT(client.writePoint(*p.get()));
     
     TEST_ASSERT(checkLinesParts(client, 1, 9));
 
@@ -637,35 +635,33 @@ void Test::testUseServerTimestamp() {
     auto opts = WriteOptions().batchSize(2);
     client.setWriteOptions(opts);
 
-    Point *dir = new Point("dir");
+    std::unique_ptr<Point> dir{createPoint("dir")};
     dir->addTag("direction", "check-precision");
     dir->addTag("precision", "no");
     dir->addField("a","a");
     p->setTime("1234567890");
-    TEST_ASSERT(client.writePoint(*dir));
-    delete dir;
-    TEST_ASSERT(client.writePoint(*p));
+    TEST_ASSERT(client.writePoint(*dir.get()));
+    TEST_ASSERT(client.writePoint(*p.get()));
     
     TEST_ASSERT(checkLinesParts(client, 1, 10));
 
     // Test writerecitions + ts
     client.setWriteOptions(opts.writePrecision(WritePrecision::S));
 
-    dir = new Point("dir");
+    dir.reset(new Point("dir"));
     dir->addTag("direction", "check-precision");
     dir->addTag("precision", "s");
     dir->addField("a","a");
     TEST_ASSERT(client.writePoint(*dir));
-    TEST_ASSERT(client.writePoint(*p));
+    TEST_ASSERT(client.writePoint(*p.get()));
     
     TEST_ASSERT(checkLinesParts(client, 1, 10));
     //test sending only precision
     client.setWriteOptions(opts.useServerTimestamp(true));
 
     TEST_ASSERT(client.writePoint(*dir));
-    TEST_ASSERT(client.writePoint(*p));
-    delete dir;
-    delete p;
+    TEST_ASSERT(client.writePoint(*p.get()));
+    
     TEST_ASSERT(checkLinesParts(client, 1, 9));
 
     TEST_END();
@@ -684,14 +680,14 @@ void Test::testInit() {
     }
     {
         InfluxDBClient client;
-        String rec = "a,a=1 a=3";
+        const char* rec = "a,a=1 a=3";
         TEST_ASSERT(!client.writeRecord(rec));
         TEST_ASSERT(client.getLastStatusCode() == 0);
         TEST_ASSERT(client.getLastErrorMessage() == "Invalid parameters");
     }
     {
         InfluxDBClient client;
-        String query = "select";
+        std::string query = "select";
         FluxQueryResult q = client.query(query);
         TEST_ASSERT(!q.next());
         TEST_ASSERT(q.getError() == "Invalid parameters");
@@ -699,7 +695,7 @@ void Test::testInit() {
         TEST_ASSERT(client.getLastErrorMessage() == "Invalid parameters");
 
         client.setConnectionParams(Test::apiUrl, Test::orgName, Test::bucketName, Test::token);
-        String rec = "a,a=1 a=3";
+        const char *rec = "a,a=1 a=3";
         TEST_ASSERT(client.writeRecord(rec));
         q = client.query(query);
         TEST_ASSERT(countLines(q) == 1);  
@@ -717,13 +713,13 @@ void Test::testUserAgent() {
     InfluxDBClient client(Test::apiUrl, Test::orgName, Test::bucketName, Test::token);
     waitServer(Test::managementUrl, true);
     TEST_ASSERT(client.validateConnection());
-    String url = String(Test::apiUrl) + "/test/user-agent";
+    auto url = std::string(Test::apiUrl) + "/test/user-agent";
     WiFiClient wifiClient;
     HTTPClient http;
-    TEST_ASSERT(http.begin(wifiClient, url));
+    TEST_ASSERT(http.begin(wifiClient, url.c_str()));
     TEST_ASSERT(http.GET() == 200);
-    String agent = "influxdb-client-arduino/" INFLUXDB_CLIENT_VERSION " (" INFLUXDB_CLIENT_PLATFORM " " INFLUXDB_CLIENT_PLATFORM_VERSION ")";
-    String data = http.getString();
+    std::string agent = "influxdb-client-arduino/" INFLUXDB_CLIENT_VERSION " (" INFLUXDB_CLIENT_PLATFORM " " INFLUXDB_CLIENT_PLATFORM_VERSION ")";
+    std::string data = http.getString().c_str();
     TEST_ASSERTM(data == agent, data);
     http.end();
     TEST_END();
@@ -735,12 +731,12 @@ void Test::testHTTPReadTimeout() {
     waitServer(Test::managementUrl, true);
     TEST_ASSERT(client.validateConnection());
     //set server delay on query for 6s (client has default timeout 5s)
-    String rec = "a,direction=timeout,timeout=6 a=1";
+    std::string rec = "a,direction=timeout,timeout=6 a=1";
     TEST_ASSERT(client.writeRecord(rec));
     rec = "a,tag=a, a=1i";
     TEST_ASSERT(client.writeRecord(rec));
 
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = client.query(query);
     // should timeout
     TEST_ASSERT(!q.next());
@@ -773,7 +769,7 @@ void Test::testRepeatedInit() {
     } while(0);
     uint32_t endRAM = ESP.getFreeHeap();
     long diff = endRAM-startRAM;
-    TEST_ASSERTM(diff>-300,String(diff));
+    TEST_ASSERTM(diff>-300,std::to_string(diff));
     TEST_END();
 }
 
@@ -784,12 +780,12 @@ void Test::testRetryOnFailedConnection() {
     clientOk.setWriteOptions(WriteOptions().batchSize(1).bufferSize(5));
     waitServer(Test::managementUrl, true);
     TEST_ASSERT(clientOk.validateConnection());
-    Point *p = createPoint("test1");
+    std::unique_ptr<Point> p{createPoint("test1")};
     TEST_ASSERT(clientOk.writePoint(*p));
-    delete p;
-    p = createPoint("test1");
+    
+    p.reset(createPoint("test1"));
     TEST_ASSERT(clientOk.writePoint(*p));
-    delete p;
+    
     TEST_ASSERT(clientOk.isBufferEmpty());
 
     clientOk.setHTTPOptions(HTTPOptions().httpReadTimeout(500));
@@ -797,26 +793,26 @@ void Test::testRetryOnFailedConnection() {
     Serial.println("Stop server!");
     waitServer(Test::managementUrl, false);
     TEST_ASSERT(!clientOk.validateConnection());
-    TEST_ASSERTM(clientOk._retryTime == 0, String(clientOk._retryTime));
-    p = createPoint("test1");
+    TEST_ASSERTM(clientOk._retryTime == 0, std::to_string(clientOk._retryTime));
+    p.reset(createPoint("test1"));
     TEST_ASSERT(!clientOk.writePoint(*p));
-    TEST_ASSERTM(clientOk._retryTime == 0, String(clientOk._retryTime));
-    delete p;
-    p = createPoint("test1");
+    TEST_ASSERTM(clientOk._retryTime == 0, std::to_string(clientOk._retryTime));
+    
+    p.reset(createPoint("test1"));
     TEST_ASSERT(!clientOk.writePoint(*p));
-    TEST_ASSERTM(clientOk._retryTime == 0, String(clientOk._retryTime));
-    delete p;
+    TEST_ASSERTM(clientOk._retryTime == 0, std::to_string(clientOk._retryTime));
+    
 
     Serial.println("Start server!");
     waitServer(Test::managementUrl, true);
     clientOk.setHTTPOptions(HTTPOptions().httpReadTimeout(5000));
     TEST_ASSERT(clientOk.validateConnection());
-    p = createPoint("test1");
+    p.reset(createPoint("test1"));
     TEST_ASSERT(clientOk.writePoint(*p));
-    TEST_ASSERTM(clientOk._retryTime == 0, String(clientOk._retryTime));
-    delete p;
+    TEST_ASSERTM(clientOk._retryTime == 0, std::to_string(clientOk._retryTime));
+    
     TEST_ASSERT(clientOk.isBufferEmpty());
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = clientOk.query(query);
     TEST_ASSERT(countLines(q) == 3);
 
@@ -831,9 +827,8 @@ void Test::testRetryOnFailedConnectionWithFlush() {
     clientOk.setWriteOptions(WriteOptions().batchSize(2).bufferSize(2).retryInterval(4));
     waitServer(Test::managementUrl, true);
     TEST_ASSERT(clientOk.validateConnection());
-    Point *p = createPoint("test1");
-    TEST_ASSERT(clientOk.writePoint(*p));
-    delete p;
+    std::unique_ptr<Point> p{createPoint("test1")};
+    TEST_ASSERT(clientOk.writePoint(*p.get()));
     TEST_ASSERT(clientOk.flushBuffer());
     TEST_ASSERT(clientOk.isBufferEmpty());
 
@@ -843,30 +838,29 @@ void Test::testRetryOnFailedConnectionWithFlush() {
     waitServer(Test::managementUrl, false);
     // test dropping batch on max retry count
     TEST_ASSERT(!clientOk.validateConnection());
-    p = createPoint("test1");
-    TEST_ASSERT(clientOk.writePoint(*p));
-    delete p;
+    p.reset(createPoint("test1"));
+    TEST_ASSERT(clientOk.writePoint(*p.get()));
 
     Serial.print(millis()/1000.0f,3);
     Serial.println(" Write 1");
 
     TEST_ASSERT(!clientOk.flushBuffer());
     TEST_ASSERT(!clientOk.isBufferEmpty());
-    Serial.println(clientOk.getLastErrorMessage());
+    Serial.println(clientOk.getLastErrorMessage().c_str());
     
     Serial.print(millis()/1000.0f,3);
     Serial.println(" Write 2");
 
     TEST_ASSERT(!clientOk.flushBuffer());
     TEST_ASSERT(!clientOk.isBufferEmpty());
-    Serial.println(clientOk.getLastErrorMessage());
+    Serial.println(clientOk.getLastErrorMessage().c_str());
 
     Serial.print(millis()/1000.0f,3);
     Serial.println(" Write 3");
 
     TEST_ASSERT(!clientOk.flushBuffer());
     TEST_ASSERT(!clientOk.isBufferEmpty());
-    Serial.println(clientOk.getLastErrorMessage());
+    Serial.println(clientOk.getLastErrorMessage().c_str());
     
    
     Serial.println("Start server!");
@@ -876,24 +870,21 @@ void Test::testRetryOnFailedConnectionWithFlush() {
 
     Serial.print(millis()/1000.0f,3);
     Serial.println(" Write 4");
-    p = createPoint("test1");
-    TEST_ASSERT(clientOk.writePoint(*p));
-    delete p;
+    p.reset(createPoint("test1"));
+    TEST_ASSERT(clientOk.writePoint(*p.get()));
     TEST_ASSERT(clientOk.flushBuffer());
     TEST_ASSERT(clientOk.isBufferEmpty());
 
     Serial.print(millis()/1000.0f,3);
     Serial.println(" Write 5");
-    p = createPoint("test1");
-    TEST_ASSERT(clientOk.writePoint(*p));
-    delete p;
+    p.reset(createPoint("test1"));
+    TEST_ASSERT(clientOk.writePoint(*p.get()));
     TEST_ASSERT(clientOk.flushBuffer());
     TEST_ASSERT(clientOk.isBufferEmpty());
 
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = clientOk.query(query);
     TEST_ASSERT(countLines(q) == 3);
-
 
     TEST_END();
     deleteAll(Test::apiUrl);
@@ -907,33 +898,32 @@ void Test::testBufferOverwriteBatchsize1() {
 
     TEST_ASSERT(!client.validateConnection());
     for (int i = 0; i < 12; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERT(!client.writePoint(*p));
-        delete p;
+        TEST_ASSERT(!client.writePoint(*p.get()));
     }
     TEST_ASSERT(client.isBufferFull());
-    TEST_ASSERTM(strstr(client._writeBuffer[0]->buffer[0], "index=10i"), client._writeBuffer[0]->buffer[0]);
+    TEST_ASSERTM(strstr(client._writeBuffer[0]->buffer[0].c_str(), "index=10i"), client._writeBuffer[0]->buffer[0]);
 
     setServerUrl(client,Test::apiUrl );
     
     waitServer(Test::managementUrl, true);
     client.setHTTPOptions(HTTPOptions().httpReadTimeout(5000));
-    Point *p = createPoint("test1");
+    std::unique_ptr<Point> p{createPoint("test1")};
     p->addField("index", 12);
-    TEST_ASSERTM(client.writePoint(*p), client.getLastErrorMessage());
+    TEST_ASSERTM(client.writePoint(*p.get()), client.getLastErrorMessage());
     TEST_ASSERT(client.isBufferEmpty());
 
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = client.query(query);
-    std::vector<String> lines = getLines(q);
+    auto lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
-    TEST_ASSERTM(lines.size() == 5, String("5 != " + lines.size()));  //5 points
-    TEST_ASSERTM(lines[0].indexOf(",8") > 0, lines[0]);
-    TEST_ASSERTM(lines[1].indexOf(",9") > 0, lines[1]);
-    TEST_ASSERTM(lines[2].indexOf(",10") > 0, lines[2]);
-    TEST_ASSERTM(lines[3].indexOf(",11") > 0, lines[3]);
-    TEST_ASSERTM(lines[4].indexOf(",12") > 0, lines[4]);
+    TEST_ASSERTM(lines.size() == 5, std::string("5 != " + std::to_string(lines.size())));  //5 points
+    TEST_ASSERTM(lines[0].find(",8") != std::string::npos, lines[0]);
+    TEST_ASSERTM(lines[1].find(",9") != std::string::npos, lines[1]);
+    TEST_ASSERTM(lines[2].find(",10") != std::string::npos, lines[2]);
+    TEST_ASSERTM(lines[3].find(",11") != std::string::npos, lines[3]);
+    TEST_ASSERTM(lines[4].find(",12") != std::string::npos, lines[4]);
 
     TEST_END();
     deleteAll(Test::apiUrl);
@@ -947,64 +937,62 @@ void Test::testBufferOverwriteBatchsize5() {
 
     TEST_ASSERT(!client.validateConnection());
     for (int i = 0; i < 39; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
         //will succeed only first batchsize-1 points
-        TEST_ASSERTM(client.writePoint(*p) == (i < 4), String("i=") + i);
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()) == (i < 4), "i=" + std::to_string(i));
     }
     TEST_ASSERT(client.isBufferFull());
-    TEST_ASSERTM(strstr(client._writeBuffer[0]->buffer[0], "index=20i"), client._writeBuffer[0]->buffer[0]);
+    TEST_ASSERTM(strstr(client._writeBuffer[0]->buffer[0].c_str(), "index=20i"), client._writeBuffer[0]->buffer[0]);
 
     setServerUrl(client,Test::apiUrl );
 
     waitServer(Test::managementUrl, true);
     client.setHTTPOptions(HTTPOptions().httpReadTimeout(5000));
-    Point *p = createPoint("test1");
+    std::unique_ptr<Point> p{createPoint("test1")};
     p->addField("index", 39);
-    TEST_ASSERTM(client.writePoint(*p), client.getLastErrorMessage());
+    TEST_ASSERTM(client.writePoint(*p.get()), client.getLastErrorMessage());
     TEST_ASSERT(client.isBufferEmpty());
     //flushing of empty buffer is ok
     TEST_ASSERT(client.flushBuffer());
 
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = client.query(query);
-    std::vector<String> lines = getLines(q);
+    auto lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
-    TEST_ASSERTM(lines.size() == 20,String(lines.size()));  //20 points (4 batches)
-    TEST_ASSERTM(lines[0].indexOf(",20") > 0,lines[0]);
-    TEST_ASSERTM(lines[1].indexOf(",21") > 0,lines[1]);
-    TEST_ASSERTM(lines[2].indexOf(",22") > 0,lines[2]);
-    TEST_ASSERTM(lines[3].indexOf(",23") > 0,lines[3]);
-    TEST_ASSERTM(lines[4].indexOf(",24") > 0,lines[4]);
-    TEST_ASSERTM(lines[19].indexOf(",39") > 0,lines[9]);
+    TEST_ASSERTM(lines.size() == 20,std::to_string(lines.size()));  //20 points (4 batches)
+    TEST_ASSERTM(lines[0].find(",20") != std::string::npos, lines[0]);
+    TEST_ASSERTM(lines[1].find(",21") != std::string::npos, lines[1]);
+    TEST_ASSERTM(lines[2].find(",22") != std::string::npos, lines[2]);
+    TEST_ASSERTM(lines[3].find(",23") != std::string::npos, lines[3]);
+    TEST_ASSERTM(lines[4].find(",24") != std::string::npos, lines[4]);
+    TEST_ASSERTM(lines[19].find(",39") != std::string::npos, lines[9]);
     deleteAll(Test::apiUrl);
     // buffer has been emptied, now writes should go according batch size
     for (int i = 0; i < 4; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERT(client.writePoint(*p));
-        delete p;
+        TEST_ASSERT(client.writePoint(*p.get()));
     }
     TEST_ASSERT(!client.isBufferEmpty());
     q = client.query(query);
     TEST_ASSERT(countLines(q) == 0);
     TEST_ASSERTM(q.getError()=="", q.getError());
 
-    p = createPoint("test1");
+    p.reset(createPoint("test1"));
     p->addField("index", 4);
-    TEST_ASSERT(client.writePoint(*p));
+    TEST_ASSERT(client.writePoint(*p.get()));
     TEST_ASSERT(client.isBufferEmpty());
     
     q = client.query(query);
     lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
-    TEST_ASSERT(lines.size() == 5);  
-    TEST_ASSERT(lines[0].indexOf(",0") > 0);
-    TEST_ASSERT(lines[1].indexOf(",1") > 0);
-    TEST_ASSERT(lines[2].indexOf(",2") > 0);
-    TEST_ASSERT(lines[3].indexOf(",3") > 0);
-    TEST_ASSERT(lines[4].indexOf(",4") > 0);
+    TEST_ASSERT(lines.size() == 5);
+    TEST_ASSERT(lines[0].find(",0") != std::string::npos);
+    TEST_ASSERT(lines[1].find(",1") != std::string::npos);
+    TEST_ASSERT(lines[2].find(",2") != std::string::npos);
+    TEST_ASSERT(lines[3].find(",3") != std::string::npos);
+    TEST_ASSERT(lines[4].find(",4") != std::string::npos);
 
     TEST_END();
     deleteAll(Test::apiUrl);
@@ -1020,13 +1008,12 @@ void Test::testServerTempDownBatchsize5() {
     waitServer(Test::managementUrl, true);
     TEST_ASSERT(client.validateConnection());
     for (int i = 0; i < 15; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERTM(client.writePoint(*p), String("i=") + i);
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()), "i=" + std::to_string(i));
     }
     TEST_ASSERT(client.isBufferEmpty());
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = client.query(query);
     TEST_ASSERT(countLines(q) == 15);  
     TEST_ASSERTM(q.getError()=="", q.getError());
@@ -1037,11 +1024,10 @@ void Test::testServerTempDownBatchsize5() {
     TEST_ASSERT(!client.validateConnection());
     client.setHTTPOptions(HTTPOptions().httpReadTimeout(500));
     for (int i = 0; i < 14; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
         //will succeed only first batchsize-1 points
-        TEST_ASSERTM(client.writePoint(*p) == (i < 4), String("i=") + i);
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()) == (i < 4), "i=" + std::to_string(i));
     }
     TEST_ASSERT(!client.isBufferEmpty());
 
@@ -1049,9 +1035,9 @@ void Test::testServerTempDownBatchsize5() {
     ;
     TEST_ASSERT(waitServer(Test::managementUrl, true));
     client.setHTTPOptions(HTTPOptions().httpReadTimeout(5000));
-    Point *p = createPoint("test1");
+    std::unique_ptr<Point> p{createPoint("test1")};
     p->addField("index", 14);
-    TEST_ASSERT(client.writePoint(*p));
+    TEST_ASSERT(client.writePoint(*p.get()));
     TEST_ASSERT(client.isBufferEmpty());
     q = client.query(query);
     TEST_ASSERT(countLines(q) == 15); 
@@ -1064,11 +1050,10 @@ void Test::testServerTempDownBatchsize5() {
     client.setHTTPOptions(HTTPOptions().httpReadTimeout(500));
 
     for (int i = 0; i < 25; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
         //will succeed only first batchsize-1 points
-        TEST_ASSERTM(client.writePoint(*p) == (i < 4), String("i=") + i);
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()) == (i < 4), "i=" + std::to_string(i));
     }
     TEST_ASSERT(client.isBufferFull());
 
@@ -1078,15 +1063,15 @@ void Test::testServerTempDownBatchsize5() {
     client.setHTTPOptions(HTTPOptions().httpReadTimeout(5000));
     TEST_ASSERT(client.flushBuffer());
     q = client.query(query);
-    std::vector<String> lines = getLines(q);
+    auto lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
     TEST_ASSERT(lines.size() == 20);
-    TEST_ASSERT(lines[0].indexOf(",5") > 0);
-    TEST_ASSERT(lines[1].indexOf(",6") > 0);
-    TEST_ASSERT(lines[2].indexOf(",7") > 0);
-    TEST_ASSERT(lines[3].indexOf(",8") > 0);
-    TEST_ASSERT(lines[18].indexOf(",23") > 0);
-    TEST_ASSERT(lines[19].indexOf(",24") > 0);
+    TEST_ASSERT(lines[0].find(",5") != std::string::npos);
+    TEST_ASSERT(lines[1].find(",6") != std::string::npos);
+    TEST_ASSERT(lines[2].find(",7") != std::string::npos);
+    TEST_ASSERT(lines[3].find(",8") != std::string::npos);
+    TEST_ASSERT(lines[18].find(",23") != std::string::npos);
+    TEST_ASSERT(lines[19].find(",24") != std::string::npos);
     deleteAll(Test::apiUrl);
 
     TEST_END();
@@ -1101,19 +1086,19 @@ void Test::testRetriesOnServerOverload() {
     waitServer(Test::managementUrl, true);
     TEST_ASSERT(client.validateConnection());
     for (int i = 0; i < 60; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERTM(client.writePoint(*p), String("i=") + i);
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()), "i=" + std::to_string(i));
+        
     }
     TEST_ASSERT(client.isBufferEmpty());
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = client.query(query);
     TEST_ASSERT(countLines(q) == 60);
     TEST_ASSERTM(q.getError()=="", q.getError()); 
     deleteAll(Test::apiUrl);
 
-    String rec = "a,direction=429-1 a=1";
+    const char* rec = "a,direction=429-1 a=1";
     TEST_ASSERT(client.writeRecord(rec));
     TEST_ASSERT(!client.flushBuffer());
     client.resetBuffer();
@@ -1121,31 +1106,31 @@ void Test::testRetriesOnServerOverload() {
     uint32_t start = millis();
     uint32_t retryDelay = 10;
     for (int i = 0; i < 52; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
         uint32_t dur = (millis() - start) / 1000;
-        if (client.writePoint(*p)) {
+        if (client.writePoint(*p.get())) {
             if (i >= 4) {
-                TEST_ASSERTM(dur >= retryDelay, String("Too early write: ") + dur);
+                TEST_ASSERTM(dur >= retryDelay, "Too early write: " + std::to_string(dur));
             }
         } else {
-            TEST_ASSERTM(i >= 4, String("i=") + i);
+            TEST_ASSERTM(i >= 4, "i=" + std::to_string(i));
             if (dur >= retryDelay) {
-                TEST_ASSERTM(false, String("Write should be ok: ") + dur);
+                TEST_ASSERTM(false, "Write should be ok: " + std::to_string(dur));
             }
         }
-        delete p;
+        
         delay(333);
     }
     TEST_ASSERT(!client.isBufferEmpty());
     TEST_ASSERT(client.flushBuffer());
     TEST_ASSERT(client.isBufferEmpty());
     q = client.query(query);
-    std::vector<String> lines = getLines(q);
+    auto lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
-    TEST_ASSERT(lines.size() == 37);  
-    TEST_ASSERT(lines[0].indexOf(",15") > 0);
-    TEST_ASSERT(lines[36].indexOf(",51") > 0);
+    TEST_ASSERT(lines.size() == 37);
+    TEST_ASSERT(lines[0].find(",15") != std::string::npos);
+    TEST_ASSERT(lines[36].find(",51") != std::string::npos);
     deleteAll(Test::apiUrl);
 
     // default retry
@@ -1157,20 +1142,20 @@ void Test::testRetriesOnServerOverload() {
     retryDelay = 5;
     start = millis();
     for (int i = 0; i < 52; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
         uint32_t dur = (millis() - start) / 1000;
-        if (client.writePoint(*p)) {
+        if (client.writePoint(*p.get())) {
             if (i >= 4) {
-                TEST_ASSERTM(dur >= retryDelay, String("Too early write: ") + dur);
+                TEST_ASSERTM(dur >= retryDelay, "Too early write: " + std::to_string(dur));
             }
         } else {
-            TEST_ASSERTM(i >= 4, String("i=") + i);
+            TEST_ASSERTM(i >= 4, "i=" + std::to_string(i));
             if (dur >= retryDelay) {
-                TEST_ASSERTM(false, String("Write should be ok: ") + dur);
+                TEST_ASSERTM(false, "Write should be ok: " + std::to_string(dur));
             }
         }
-        delete p;
+        
         delay(162);
     }
     TEST_ASSERT(!client.isBufferEmpty());
@@ -1180,8 +1165,8 @@ void Test::testRetriesOnServerOverload() {
     lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
     TEST_ASSERT(lines.size() == 37);
-    TEST_ASSERT(lines[0].indexOf(",15") > 0);
-    TEST_ASSERT(lines[36].indexOf(",51") > 0);
+    TEST_ASSERT(lines[0].find(",15") != std::string::npos);
+    TEST_ASSERT(lines[36].find(",51") != std::string::npos);
     deleteAll(Test::apiUrl);
 
     rec = "a,direction=503-1 a=1";
@@ -1192,20 +1177,19 @@ void Test::testRetriesOnServerOverload() {
     retryDelay = 10;
     start = millis();
     for (int i = 0; i < 52; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
         uint32_t dur = (millis() - start) / 1000;
-        if (client.writePoint(*p)) {
+        if (client.writePoint(*p.get())) {
             if (i >= 4) {
-                TEST_ASSERTM(dur >= retryDelay, String("Too early write: ") + dur);
+                TEST_ASSERTM(dur >= retryDelay, "Too early write: " + std::to_string(dur));
             }
         } else {
-            TEST_ASSERTM(i >= 4, String("i=") + i);
+            TEST_ASSERTM(i >= 4, "i=" + std::to_string(i));
             if (dur >= retryDelay) {
-                TEST_ASSERTM(false, String("Write should be ok: ") + dur);
+                TEST_ASSERTM(false, "Write should be ok: " + std::to_string(dur));
             }
         }
-        delete p;
         delay(1000);
     }
     TEST_ASSERT(!client.isBufferEmpty());
@@ -1215,8 +1199,8 @@ void Test::testRetriesOnServerOverload() {
     lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
     TEST_ASSERT(lines.size() == 52);
-    TEST_ASSERT(lines[0].indexOf(",0") > 0);
-    TEST_ASSERT(lines[51].indexOf(",51") > 0);
+    TEST_ASSERT(lines[0].find(",0") != std::string::npos);
+    TEST_ASSERT(lines[51].find(",51") != std::string::npos);
     deleteAll(Test::apiUrl);
 
     // default retry
@@ -1228,20 +1212,19 @@ void Test::testRetriesOnServerOverload() {
     retryDelay = 5;
     start = millis();
     for (int i = 0; i < 52; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
         uint32_t dur = (millis() - start) / 1000;
-        if (client.writePoint(*p)) {
+        if (client.writePoint(*p.get())) {
             if (i >= 4) {
-                TEST_ASSERTM(dur >= retryDelay, String("Too early write: ") + dur);
+                TEST_ASSERTM(dur >= retryDelay, "Too early write: " + std::to_string(dur));
             }
         } else {
-            TEST_ASSERTM(i >= 4, String("i=") + i);
+            TEST_ASSERTM(i >= 4,  "i=" + std::to_string(i));
             if (dur >= retryDelay) {
-                TEST_ASSERTM(false, String("Write should be ok: ") + dur);
+                TEST_ASSERTM(false,  "Write should be ok: " + std::to_string(dur));
             }
         }
-        delete p;
         delay(162);
     }
     TEST_ASSERT(!client.isBufferEmpty());
@@ -1252,8 +1235,8 @@ void Test::testRetriesOnServerOverload() {
     lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
     TEST_ASSERT(lines.size() == 37); 
-    TEST_ASSERT(lines[0].indexOf(",15") > 0);
-    TEST_ASSERT(lines[36].indexOf(",51") > 0);
+    TEST_ASSERT(lines[0].find(",15") != std::string::npos);
+    TEST_ASSERT(lines[36].find(",51") != std::string::npos);
 
     TEST_END();
     deleteAll(Test::apiUrl);
@@ -1267,38 +1250,36 @@ void Test::testFailedWrites() {
     //test with no batching
     TEST_ASSERT(client.validateConnection());
     for (int i = 0; i < 20; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         if (!(i % 5)) {
             p->addTag("direction", "status");
             p->addTag("x-code", i > 10 ? "404" : "320");
         }
         p->addField("index", i);
-        TEST_ASSERTM(client.writePoint(*p) == (i % 5 != 0), String("i=") + i + client.getLastErrorMessage());
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()) == (i % 5 != 0), "i=" + i + client.getLastErrorMessage());
     }
-    String query = "";
+    std::string query = "";
     FluxQueryResult q = client.query(query);
-    std::vector<String> lines = getLines(q);
+    auto lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
     TEST_ASSERT(lines.size() == 16);  //12 points+header
-    TEST_ASSERTM(lines[0].indexOf(",1") > 0, lines[0]);
-    TEST_ASSERTM(lines[4].indexOf(",6") > 0, lines[4]);
-    TEST_ASSERTM(lines[9].indexOf(",12") > 0, lines[9]);
-    TEST_ASSERTM(lines[15].indexOf(",19") > 0, lines[15]);
+    TEST_ASSERTM(lines[0].find(",1") != std::string::npos, lines[0]);
+    TEST_ASSERTM(lines[4].find(",6") != std::string::npos, lines[4]);
+    TEST_ASSERTM(lines[9].find(",12") != std::string::npos, lines[9]);
+    TEST_ASSERTM(lines[15].find(",19") != std::string::npos, lines[15]);
     deleteAll(Test::apiUrl);
 
     //test with batching
     client.setWriteOptions(WritePrecision::NoTime, 5, 20);
     for (int i = 0; i < 30; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         if (!(i % 10)) {
             p->addTag("direction", "status");
             p->addTag("x-code", i > 10 ? "404" : "320");
         }
         p->addField("index", i);
         //i == 4,14,24 should fail
-        TEST_ASSERTM(client.writePoint(*p) == ((i - 4) % 10 != 0), String("i=") + i);
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()) == ((i - 4) % 10 != 0), "i=" + std::to_string(i));
     }
 
     q = client.query(query);
@@ -1306,9 +1287,9 @@ void Test::testFailedWrites() {
     TEST_ASSERTM(q.getError()=="", q.getError());
     //3 batches should be skipped
     TEST_ASSERT(lines.size() == 15);  //15 points+header
-    TEST_ASSERTM(lines[0].indexOf(",5") > 0, lines[0]);
-    TEST_ASSERTM(lines[5].indexOf(",15") > 0, lines[5]);
-    TEST_ASSERTM(lines[10].indexOf(",25") > 0, lines[10]);
+    TEST_ASSERTM(lines[0].find(",5") != std::string::npos, lines[0]);
+    TEST_ASSERTM(lines[5].find(",15") != std::string::npos, lines[5]);
+    TEST_ASSERTM(lines[10].find(",25") != std::string::npos, lines[10]);
 
     TEST_END();
     deleteAll(Test::apiUrl);
@@ -1330,12 +1311,12 @@ void Test::testTimestamp() {
     TEST_ASSERTM( ts == 5678001234000, timeStampToString(ts));
 
     // Test increasing timestamp
-    String prev = "";
+    std::string prev = "";
     for(int i = 0;i<2000;i++) {
         Point p("test");
         p.setTime(WritePrecision::US);
-        String act = p.getTime();
-        TEST_ASSERTM( i == 0 || prev < act, String(i) + ": " + prev + " vs " + act);
+        auto act = p.getTime();
+        TEST_ASSERTM( i == 0 || prev < act, std::to_string(i) + ": " + prev + " vs " + act);
         prev = act;
         delayMicroseconds(100);
     }
@@ -1349,14 +1330,14 @@ void Test::testTimestamp() {
     TEST_ASSERT(client.validateConnection());
     uint32_t timestamp;
     for (int i = 0; i < 20; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         timestamp = time(nullptr);
         switch (i % 4) {
             case 0:
                 p->setTime(timestamp);
                 break;
             case 1: {
-                String ts = String(timestamp);
+                auto ts = std::to_string(timestamp);
                 p->setTime(ts);
             } break;
             case 2:
@@ -1365,41 +1346,37 @@ void Test::testTimestamp() {
                 //let other be set automatically
         }
         p->addField("index", i);
-        TEST_ASSERTM(client.writePoint(*p), String("i=") + i);
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()), "i=" + std::to_string(i));
     }
-    String query = "";
+    std::string query = "";
     FluxQueryResult q = client.query(query);
-    std::vector<String> lines = getLines(q);
+    auto lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
     TEST_ASSERT(lines.size() == 20);
     for (unsigned int i = 0; i < lines.size(); i++) {
-        int partsCount;
-        String *parts = getParts(lines[i], ',', partsCount);
-        TEST_ASSERTM(partsCount == 11, String(i) + ":" + lines[i]);  //1measurement,4tags,5fields, 1timestamp
-        parts[10].trim();
-        TEST_ASSERTM(parts[10].length() == 10, String(i) + ":" + lines[i]);
-        delete[] parts;
+        auto parts = getParts(lines[i], ',');
+        TEST_ASSERTM(parts.size() == 11, std::to_string(i) + ":" + lines[i]);  //1measurement,4tags,5fields, 1timestamp
+        parts[10].erase(std::find_if(parts[10].rbegin(), parts[10].rend(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }).base(), parts[10].end());
+        TEST_ASSERTM(parts[10].length() == 10, std::to_string(i) + ":" + lines[i]);
     }
     deleteAll(Test::apiUrl);
 
     client.setWriteOptions(WritePrecision::NoTime, 2, 5);
     //test with no batching
     for (int i = 0; i < 20; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERTM(client.writePoint(*p), String("i=") + i);
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()), "i=" + std::to_string(i));
     }
     q = client.query(query);
     lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
     TEST_ASSERT(lines.size() == 20);  //20 points+header
     for (unsigned int i = 0; i < lines.size(); i++) {
-        int partsCount;
-        String *parts = getParts(lines[i], ',', partsCount);
-        TEST_ASSERTM(partsCount == 10, String(i) + ":" + lines[i]);  //1measurement,4tags,5fields
-        delete[] parts;
+        auto parts = getParts(lines[i], ',');
+        TEST_ASSERTM(parts.size() == 10, std::to_string(i) + ":" + lines[i]);  //1measurement,4tags,5fields
     }
 
     TEST_END();
@@ -1414,15 +1391,15 @@ void Test::testTimestampAdjustment() {
     Point point("a");
     point.setTime(WritePrecision::S);
     client.checkPrecisions(point);
-    TEST_ASSERTM(point.getTime().endsWith("000000000"),point.getTime() );
+    TEST_ASSERTM(endsWith(point.getTime(), "000000000"), point.getTime() );
 
     point.setTime(WritePrecision::MS);
     client.checkPrecisions(point);
-    TEST_ASSERTM(point.getTime().endsWith("000"),point.getTime() );
+    TEST_ASSERTM(endsWith(point.getTime(), "000"), point.getTime());
 
     //test not modified ts
     point.setTime(WritePrecision::NS);
-    String a = point.getTime();
+    auto a = point.getTime();
     client.checkPrecisions(point);
     TEST_ASSERTM(a == point.getTime(), point.getTime() );
     
@@ -1444,7 +1421,7 @@ void Test::testTimestampAdjustment() {
     client.setWriteOptions(WriteOptions().writePrecision(WritePrecision::US));
     point.setTime(WritePrecision::S);
     client.checkPrecisions(point);
-    TEST_ASSERTM(point.getTime().endsWith("000000"),point.getTime() );
+    TEST_ASSERTM(endsWith(point.getTime(), "000000"), point.getTime());
 
     TEST_END();
 }
@@ -1459,39 +1436,37 @@ void Test::testV1() {
     TEST_ASSERTM(client.validateConnection(), client.getLastErrorMessage());
     //test with no batching
     for (int i = 0; i < 20; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERTM(client.writePoint(*p), String("i=") + i + client.getLastErrorMessage());
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()), "i=" + std::to_string(i) + client.getLastErrorMessage());
+        
     }
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = client.query(query);
-    std::vector<String> lines = getLines(q);
+    auto lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
-    TEST_ASSERTM(lines.size() == 20, String(lines.size()) + " vs 20");
+    TEST_ASSERTM(lines.size() == 20, std::to_string(lines.size()) + " vs 20");
     deleteAll(Test::apiUrl);
     
     //test with w/ batching 5
     client.setWriteOptions(WritePrecision::NoTime, 5);
 
     for (int i = 0; i < 15; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERTM(client.writePoint(*p), String("i=") + i + client.getLastErrorMessage());
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()), "i=" + std::to_string(i) + client.getLastErrorMessage());
     }
     q = client.query(query);
     lines = getLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
-    TEST_ASSERTM(lines.size() == 15, String(lines.size()));  
+    TEST_ASSERTM(lines.size() == 15, std::to_string(lines.size()));  
 
     // test precision
     for (int i = (int)WritePrecision::NoTime; i <= (int)WritePrecision::NS; i++) {
         client.setWriteOptions((WritePrecision)i, 1);
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERTM(client.writePoint(*p), String("i=") + i);
-        delete p;
+        TEST_ASSERTM(client.writePoint(*p.get()), "i=" + std::to_string(i));
     }
     TEST_END();
     deleteAll(Test::apiUrl);
@@ -1559,7 +1534,7 @@ void Test::testFluxTypes() {
     struct tm tx = val6.getDateTime().value;
     TEST_ASSERTM(compareTm(tx,t1), "val6.getDateTime().value");
     TEST_ASSERTM(val6.getDateTime().microseconds == 123400,"val6.getDateTime().microseconds");
-    String dtStr = val6.getDateTime().format("%F %T");
+    std::string dtStr = val6.getDateTime().format("%F %T");
     TEST_ASSERTM(dtStr == "2020-05-21 09:34:15",dtStr);
 
 
@@ -1601,26 +1576,25 @@ void Test::testFluxTypesSerialization() {
     TEST_INIT("testFluxTypesSerialization");
 
     struct strTest {
-        FluxBase *fb;
-        const __FlashStringHelper * json;
+        FluxBase* fb;
+        const __FlashStringHelper *json;
     };
 
-    strTest tests[] = {
-        { new FluxLong("long", -2020123456), F("\"long\":-2020123456") },
-        { new FluxUnsignedLong("ulong", 2020123456), F("\"ulong\":2020123456") },
-        { new FluxBool("bool", false),  F("\"bool\":false")},
-        { new FluxDouble("double", 28.3, 1), F("\"double\":28.3")},
-        { new FluxDateTime("dateTime", FluxDatatypeDatetimeRFC3339Nano, {15,34,9,22,4,120,0,0,0}, 123456), F("\"dateTime\":\"2020-05-22T09:34:15.123456Z\"")},
-        { new FluxString("string", "my text", FluxDatatypeString), F("\"string\":\"my text\"")},
-        { new FluxDouble("double", 21328.3132213,5), F("\"double\":21328.31322")},
-        { new FluxString("duration", "-1h", FluxDatatypeDuration), F("\"duration\":\"-1h\"")}
-    };
+    std::array<strTest, 8> tests {{
+        { strTest { new FluxLong("long", -2020123456), F("\"long\":-2020123456") }},
+        { strTest { new FluxUnsignedLong("ulong", 2020123456), F("\"ulong\":2020123456") }},
+        { strTest { new FluxBool("bool", false),  F("\"bool\":false") }},
+        { strTest { new FluxDouble("double", 28.3, 1), F("\"double\":28.3") }},
+        { strTest { new FluxDateTime("dateTime", FluxDatatypeDatetimeRFC3339Nano, {15,34,9,22,4,120,0,0,0}, 123456), F("\"dateTime\":\"2020-05-22T09:34:15.123456Z\"") }},
+        { strTest { new FluxString("string", "my text", FluxDatatypeString), F("\"string\":\"my text\"") }},
+        { strTest { new FluxDouble("double", 21328.3132213,5), F("\"double\":21328.31322") }},
+        { strTest { new FluxString("duration", "-1h", FluxDatatypeDuration), F("\"duration\":\"-1h\"") }}
+    }};
 
-    for(int i=0;i<sizeof(tests)/sizeof(strTest);i++) {
-        char *buff = tests[i].fb->jsonString();
-        delete tests[i].fb;
-        TEST_ASSERTM(String(tests[i].json).equals(buff), buff);
-        delete [] buff;
+    for (auto t : tests) {
+        std::unique_ptr<char[]> buff { t.fb->jsonString() };
+        delete t.fb;
+        TEST_ASSERTM(String(t.json).equals(buff.get()), buff.get());
     }
 
     TEST_END();
@@ -1649,9 +1623,7 @@ void Test::testQueryParams() {
         "\"string\":\"my text\""
     };
     for(int i=0;i<params.size();i++) {
-        char *buff = params.jsonString(i);
-        String json = buff;
-        delete [] buff;
+        auto json { params.jsonString(i) };
         TEST_ASSERTM(json == jsons[i], json);
     }
 
@@ -1663,8 +1635,8 @@ void Test::testQueryParams() {
     QueryParams params2;
     params2.add("char", '1');
     params2.add("uchar", (unsigned char)1);
-    params2.add(String("int"), -1);
-    params2.add(F("uint"), 1u);
+    params2.add("int", -1);
+    params2.add("uint", 1u);
     params2.add("long", -1l);
     params2.add("ulong", 1lu);
     params2.add("longlong", -1ll);
@@ -1673,9 +1645,9 @@ void Test::testQueryParams() {
     params2.add("double", 1.1);
     params2.add("bool", true);
     params2.add("cstring", "text");
-    params2.add(F("fstring"), F("text"));
-    params2.add("dateTime", {15,34,9,22,4,120,0,0,0});
-    String s = "string";
+    params2.add("fstring", F("text"));
+    // params2.add("dateTime", {15,34,9,22,4,120,0,0,0}); Not sure here?
+    std::string s = "string";
     params2.add("string", s);
     TEST_ASSERT(params2.size() == 15);
 
@@ -1698,7 +1670,7 @@ void Test::testQueryParams() {
     };
 
     for(int i=0;i<params2.size();i++) {
-        TEST_ASSERTM(params2.get(i)->getType() == types[i], String(i) + " " + params2.get(i)->getType());
+        TEST_ASSERTM(params2.get(i)->getType() == types[i], std::to_string(i) + " " + params2.get(i)->getType());
     }
 
     TEST_END();
@@ -1744,10 +1716,10 @@ bool testFluxDateTimeValue(FluxQueryResult flux, int columnIndex,  const char *c
         TEST_ASSERTM(flux.getValueByIndex(columnIndex).getRawValue() == rawValue, flux.getValueByName(columnName).getRawValue());
         FluxDateTime dt = flux.getValueByIndex(columnIndex).getDateTime();
         TEST_ASSERTM(compareTm(time, dt.value),  flux.getValueByIndex(columnIndex).getRawValue());
-        TEST_ASSERTM(dt.microseconds == us,  String(dt.microseconds) + " vs " + String(us));
+        TEST_ASSERTM(dt.microseconds == us,  std::to_string(dt.microseconds) + " vs " + std::to_string(us));
         dt = flux.getValueByName(columnName).getDateTime();
         TEST_ASSERTM(compareTm(time, dt.value),  flux.getValueByName(columnName).getRawValue());
-        TEST_ASSERTM(dt.microseconds == us,  String(dt.microseconds) + " vs " + String(us));
+        TEST_ASSERTM(dt.microseconds == us,  std::to_string(dt.microseconds) + " vs " + std::to_string(us));
         return true;
     } while(0);
 end:
@@ -1765,13 +1737,13 @@ end:
     return false;
 }
 
-bool testStringVector(std::vector<String> vect, const char *values[], unsigned int size) {
+bool testStringVector(std::vector<std::string> vect, const char *values[], unsigned int size) {
     do {
-        TEST_ASSERTM(vect.size() == size, String(vect.size()));
-        for(unsigned int i=0;i<size;i++) {
+        TEST_ASSERTM(vect.size() == size, std::to_string(vect.size()));
+        for(unsigned int i=0; i<size; i++) {
             if(vect[i] != values[i]) {
                 Serial.print("assert failure: ");
-                Serial.println(vect[i]);
+                Serial.println(vect[i].c_str());
                 goto end;
             }
         }
@@ -1783,8 +1755,8 @@ end:
 
 bool testDoubleValue(FluxQueryResult flux, int columnIndex,  const char *columnName, const char *rawValue, double value) {
     do {
-        TEST_ASSERTM(flux.getValueByIndex(columnIndex).getDouble() == value, String(flux.getValueByIndex(columnIndex).getDouble()));
-        TEST_ASSERTM(flux.getValueByName(columnName).getDouble() == value, String(flux.getValueByName(columnName).getDouble()));
+        TEST_ASSERTM(flux.getValueByIndex(columnIndex).getDouble() == value, std::to_string(flux.getValueByIndex(columnIndex).getDouble()));
+        TEST_ASSERTM(flux.getValueByName(columnName).getDouble() == value, std::to_string(flux.getValueByName(columnName).getDouble()));
         TEST_ASSERTM(flux.getValueByName(columnName).getRawValue() == rawValue, flux.getValueByName(columnName).getRawValue());
         return true;
     } while(0);
@@ -1794,8 +1766,8 @@ end:
 
 bool testLongValue(FluxQueryResult flux, int columnIndex,  const char *columnName, const char *rawValue, long value) {
     do {
-        TEST_ASSERTM(flux.getValueByIndex(columnIndex).getLong() == value, String(flux.getValueByIndex(columnIndex).getLong()));
-        TEST_ASSERTM(flux.getValueByName(columnName).getLong() == value, String(flux.getValueByName(columnName).getLong()));
+        TEST_ASSERTM(flux.getValueByIndex(columnIndex).getLong() == value, std::to_string(flux.getValueByIndex(columnIndex).getLong()));
+        TEST_ASSERTM(flux.getValueByName(columnName).getLong() == value, std::to_string(flux.getValueByName(columnName).getLong()));
         TEST_ASSERTM(flux.getValueByName(columnName).getRawValue() == rawValue, flux.getValueByName(columnName).getRawValue());
         return true;
     } while(0);
@@ -1805,8 +1777,8 @@ end:
 
 bool testUnsignedLongValue(FluxQueryResult flux, int columnIndex,  const char *columnName, const char *rawValue, unsigned long value) {
     do {
-        TEST_ASSERTM(flux.getValueByIndex(columnIndex).getUnsignedLong() == value, String(flux.getValueByIndex(columnIndex).getUnsignedLong()));
-        TEST_ASSERTM(flux.getValueByName(columnName).getUnsignedLong() == value, String(flux.getValueByName(columnName).getUnsignedLong()));
+        TEST_ASSERTM(flux.getValueByIndex(columnIndex).getUnsignedLong() == value, std::to_string(flux.getValueByIndex(columnIndex).getUnsignedLong()));
+        TEST_ASSERTM(flux.getValueByName(columnName).getUnsignedLong() == value, std::to_string(flux.getValueByName(columnName).getUnsignedLong()));
         TEST_ASSERTM(flux.getValueByName(columnName).getRawValue() == rawValue, flux.getValueByName(columnName).getRawValue());
         return true;
     } while(0);
@@ -1842,7 +1814,7 @@ void Test::testFluxParserSingleTable() {
     const char *columns[] = {"result","table", "_start", "_stop", "_time", "_value", "_field","_measurement","a","b"};
     TEST_ASSERT(testTableColumns(flux, columns, 10));
 
-    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + String(flux.getValues().size()));
+    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + std::to_string(flux.getValues().size()));
 
     TEST_ASSERT(testStringValue(flux, 0, "result", ""));
     TEST_ASSERT(testLongValue(flux, 1, "table", "0", 0));
@@ -1863,7 +1835,7 @@ void Test::testFluxParserSingleTable() {
     TEST_ASSERT(testStringVector(flux.getColumnsDatatype(), types, 10));
     TEST_ASSERT(testTableColumns(flux, columns, 10));
 
-    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + String(flux.getValues().size()));
+    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + std::to_string(flux.getValues().size()));
 
     TEST_ASSERT(testStringValue(flux, 0, "result", ""));
     TEST_ASSERT(testLongValue(flux, 1, "table", "1", 1));
@@ -1901,30 +1873,30 @@ void Test::testFluxParserNilValue() {
 
     TEST_ASSERTM(flux.getColumnsName().size() == 10,"flux.getColumnsName().size()");
     
-    TEST_ASSERTM(flux.getValueByIndex(5).isNull(), String(flux.getValueByIndex(5).isNull()));
+    TEST_ASSERTM(flux.getValueByIndex(5).isNull(), std::to_string(flux.getValueByIndex(5).isNull()));
     TEST_ASSERT(testDoubleValue(flux, 5, "_value", "", 0.0));
 
     TEST_ASSERTM(flux.next(),"flux.next()");
     TEST_ASSERTM(!flux.hasTableChanged(),"!flux.hasTableChanged()");
     TEST_ASSERTM(flux.getError() == "",flux.getError());
 
-    TEST_ASSERTM(!flux.getValueByIndex(5).isNull(), String(flux.getValueByIndex(5).isNull()));
+    TEST_ASSERTM(!flux.getValueByIndex(5).isNull(), std::to_string(flux.getValueByIndex(5).isNull()));
     TEST_ASSERT(testDoubleValue(flux, 5, "_value", "6.6", 6.6));
 
-    TEST_ASSERTM(flux.getValueByIndex(8).isNull(), String(flux.getValueByIndex(8).isNull()));
+    TEST_ASSERTM(flux.getValueByIndex(8).isNull(), std::to_string(flux.getValueByIndex(8).isNull()));
     TEST_ASSERT(testStringValue(flux, 8, "a", ""));
 
     TEST_ASSERTM(flux.next(),"flux.next()");
     TEST_ASSERTM(!flux.hasTableChanged(),"!flux.hasTableChanged()");
     TEST_ASSERTM(flux.getError() == "",flux.getError());
 
-    TEST_ASSERTM(!flux.getValueByIndex(5).isNull(), String(flux.getValueByIndex(5).isNull()));
+    TEST_ASSERTM(!flux.getValueByIndex(5).isNull(), std::to_string(flux.getValueByIndex(5).isNull()));
     TEST_ASSERT(testDoubleValue(flux, 5, "_value", "1122.45", 1122.45));
 
-    TEST_ASSERTM(!flux.getValueByIndex(8).isNull(), String(flux.getValueByIndex(8).isNull()));
+    TEST_ASSERTM(!flux.getValueByIndex(8).isNull(), std::to_string(flux.getValueByIndex(8).isNull()));
     TEST_ASSERT(testStringValue(flux, 8, "a", "3"));
 
-    TEST_ASSERTM(flux.getValueByIndex(9).isNull(), String(flux.getValueByIndex(9).isNull()));
+    TEST_ASSERTM(flux.getValueByIndex(9).isNull(), std::to_string(flux.getValueByIndex(9).isNull()));
     TEST_ASSERT(testStringValue(flux, 9, "b", ""));
 
     TEST_ASSERTM(!flux.next(),"!flux.next()");
@@ -1941,7 +1913,7 @@ void Test::testFluxParserMultiTables(bool chunked) {
     InfluxDBClient client(Test::apiUrl, Test::orgName, Test::bucketName, Test::token);
     TEST_ASSERT(waitServer(Test::managementUrl, true));
     if(chunked) {
-        String record = "a,direction=chunked a=1";
+        std::string record = "a,direction=chunked a=1";
         client.writeRecord(record);
     }
     FluxQueryResult flux = client.query("testquery-multiTables");
@@ -1956,7 +1928,7 @@ void Test::testFluxParserMultiTables(bool chunked) {
     TEST_ASSERT(testTableColumns(flux, columns, 10));
 
     // ==== row 1 ========
-    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + String(flux.getValues().size()));
+    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + std::to_string(flux.getValues().size()));
     TEST_ASSERT(testStringValue(flux, 0, "result", "_result"));
     TEST_ASSERT(testLongValue(flux, 1, "table","0", 0));
     TEST_ASSERT(testFluxDateTimeValue(flux, 2, "_start", "2020-02-17T22:19:49.747562847Z", {49,19,22,17,1,120,0,0,0}, 747562));
@@ -1975,7 +1947,7 @@ void Test::testFluxParserMultiTables(bool chunked) {
     TEST_ASSERT(testStringVector(flux.getColumnsDatatype(), types, 10));
     TEST_ASSERT(testTableColumns(flux, columns, 10));
 
-    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + String(flux.getValues().size()));
+    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + std::to_string(flux.getValues().size()));
     TEST_ASSERT(testStringValue(flux, 0, "result", "_result"));
     TEST_ASSERT(testLongValue(flux, 1, "table","0", 0));
     TEST_ASSERT(testFluxDateTimeValue(flux, 2, "_start", "2020-02-17T22:19:49.747562847Z", {49,19,22,17,1,120,0,0,0}, 747562));
@@ -1996,7 +1968,7 @@ void Test::testFluxParserMultiTables(bool chunked) {
     TEST_ASSERT(testStringVector(flux.getColumnsDatatype(), types2, 10));
     TEST_ASSERT(testTableColumns(flux, columns, 10));
     // ========== row 1 ================
-    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + String(flux.getValues().size()));
+    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + std::to_string(flux.getValues().size()));
     TEST_ASSERT(testStringValue(flux, 0, "result", "_result1"));
     TEST_ASSERT(testLongValue(flux, 1, "table","1", 1));
     TEST_ASSERT(testFluxDateTimeValue(flux, 2, "_start", "2020-02-16T22:19:49.747562847Z", {49,19,22,16,1,120,0,0,0}, 747562));
@@ -2015,7 +1987,7 @@ void Test::testFluxParserMultiTables(bool chunked) {
     TEST_ASSERT(testStringVector(flux.getColumnsDatatype(), types2, 10));
     TEST_ASSERT(testTableColumns(flux, columns, 10));
 
-    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + String(flux.getValues().size()));
+    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + std::to_string(flux.getValues().size()));
     TEST_ASSERT(testStringValue(flux, 0, "result", "_result1"));
     TEST_ASSERT(testLongValue(flux, 1, "table", "1", 1));
     TEST_ASSERT(testFluxDateTimeValue(flux, 2, "_start", "2020-02-16T22:19:49.747562847Z", {49,19,22,16,1,120,0,0,0}, 747562));
@@ -2037,15 +2009,15 @@ void Test::testFluxParserMultiTables(bool chunked) {
     TEST_ASSERT(testStringVector(flux.getColumnsDatatype(), types3, 10));
     TEST_ASSERT(testTableColumns(flux, columns, 10));
     // ========== row 1 ================
-    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + String(flux.getValues().size()));
+    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + std::to_string(flux.getValues().size()));
     TEST_ASSERT(testStringValue(flux, 0, "result", "_result2"));
     TEST_ASSERT(testLongValue(flux, 1, "table", "2", 2));
     TEST_ASSERT(testFluxDateTimeValue(flux, 2, "_start", "2020-02-17T22:19:49.747562847Z", {49,19,22,17,1,120,0,0,0}, 747562));
     TEST_ASSERT(testFluxDateTimeValue(flux, 3, "_stop", "2020-02-18T22:19:49.747562847Z", {49,19,22,18,1,120,0,0,0}, 747562));
     TEST_ASSERT(testFluxDateTimeValue(flux, 4, "_time", "2020-02-18T10:34:08.135814545Z", {8,34,10,18,1,120,0,0,0}, 135814));
    
-    TEST_ASSERTM(!flux.getValueByIndex(5).getBool(), String(flux.getValueByIndex(5).getBool()));
-    TEST_ASSERTM(!flux.getValueByName("_value").getBool(), String(flux.getValueByName("_value").getBool()));
+    TEST_ASSERTM(!flux.getValueByIndex(5).getBool(), std::to_string(flux.getValueByIndex(5).getBool()));
+    TEST_ASSERTM(!flux.getValueByName("_value").getBool(), std::to_string(flux.getValueByName("_value").getBool()));
     TEST_ASSERTM(flux.getValueByName("_value").getRawValue() == "false", flux.getValueByName("_value").getRawValue());
 
     TEST_ASSERT(testStringValue(flux, 6, "_field", "b"));
@@ -2059,15 +2031,15 @@ void Test::testFluxParserMultiTables(bool chunked) {
     //=== row 2 ====
     TEST_ASSERT(testStringVector(flux.getColumnsDatatype(), types3, 10));
     TEST_ASSERT(testTableColumns(flux, columns, 10));
-    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + String(flux.getValues().size()));
+    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + std::to_string(flux.getValues().size()));
     TEST_ASSERT(testStringValue(flux, 0, "result", "_result2"));
     TEST_ASSERT(testLongValue(flux, 1, "table", "2", 2));
     TEST_ASSERT(testFluxDateTimeValue(flux, 2, "_start", "2020-02-17T22:19:49.747562847Z", {49,19,22,17,1,120,0,0,0}, 747562));
     TEST_ASSERT(testFluxDateTimeValue(flux, 3, "_stop", "2020-02-18T22:19:49.747562847Z", {49,19,22,18,1,120,0,0,0}, 747562));
     TEST_ASSERT(testFluxDateTimeValue(flux, 4, "_time", "2020-02-18T22:08:44.969100374Z", {44,8,22,18,1,120,0,0,0}, 969100));
    
-    TEST_ASSERTM(flux.getValueByIndex(5).getBool(), String(flux.getValueByIndex(5).getBool()));
-    TEST_ASSERTM(flux.getValueByName("_value").getBool(), String(flux.getValueByName("_value").getBool()));
+    TEST_ASSERTM(flux.getValueByIndex(5).getBool(), std::to_string(flux.getValueByIndex(5).getBool()));
+    TEST_ASSERTM(flux.getValueByName("_value").getBool(), std::to_string(flux.getValueByName("_value").getBool()));
     TEST_ASSERTM(flux.getValueByName("_value").getRawValue() == "true", flux.getValueByName("_value").getRawValue());
 
     TEST_ASSERT(testStringValue(flux, 6, "_field", "b"));
@@ -2083,7 +2055,7 @@ void Test::testFluxParserMultiTables(bool chunked) {
     TEST_ASSERT(testStringVector(flux.getColumnsDatatype(), types4, 10));
     TEST_ASSERT(testTableColumns(flux, columns, 10));
     // ========== row 1 ================
-    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + String(flux.getValues().size()));
+    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + std::to_string(flux.getValues().size()));
     TEST_ASSERT(testStringValue(flux, 0, "result", "_result3"));
     TEST_ASSERT(testLongValue(flux, 1, "table", "3", 3));
     TEST_ASSERT(testFluxDateTimeValue(flux, 2, "_start", "2020-02-10T22:19:49.747562847Z", {49,19,22,10,1,120,0,0,0}, 747562));
@@ -2102,7 +2074,7 @@ void Test::testFluxParserMultiTables(bool chunked) {
     TEST_ASSERT(testStringVector(flux.getColumnsDatatype(), types4, 10));
     TEST_ASSERT(testTableColumns(flux, columns, 10));
     
-    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + String(flux.getValues().size()));
+    TEST_ASSERTM(flux.getValues().size() == 10,"flux.getValues().size() " + std::to_string(flux.getValues().size()));
     TEST_ASSERT(testStringValue(flux, 0, "result", "_result3"));
     TEST_ASSERT(testLongValue(flux, 1, "table", "3", 3));
     TEST_ASSERT(testFluxDateTimeValue(flux, 2, "_start", "2020-02-10T22:19:49.747562847Z", {49,19,22,10,1,120,0,0,0}, 747562));
@@ -2223,45 +2195,45 @@ void Test::testRetryInterval() {
     waitServer(Test::managementUrl, true);
     TEST_ASSERT(client.validateConnection());
 
-    String rec = "test1,direction=permanent-set,x-code=502,SSID=bonitoo.io,device_name=ESP32,device_id=4272205360 temperature=28.60,humidity=86i,code=69i,door=false,status=\"failed\",index=0";
+    std::string rec = "test1,direction=permanent-set,x-code=502,SSID=bonitoo.io,device_name=ESP32,device_id=4272205360 temperature=28.60,humidity=86i,code=69i,door=false,status=\"failed\",index=0";
     TEST_ASSERT(!client.writeRecord(rec));
     TEST_ASSERT(!client.canSendRequest());
-    TEST_ASSERTM(client._retryTime == 2, String(client._retryTime));
-    TEST_ASSERTM(client._writeBuffer[0]->retryCount == 1, String(client._writeBuffer[0]->retryCount));
+    TEST_ASSERTM(client._retryTime == 2, std::to_string(client._retryTime));
+    TEST_ASSERTM(client._writeBuffer[0]->retryCount == 1, std::to_string(client._writeBuffer[0]->retryCount));
     delay(2000);
     rec = "test1,direction=permanent-unset,SSID=bonitoo.io,device_name=ESP32,device_id=4272205360 temperature=28.60,humidity=86i,code=69i,door=false,status=\"failed\",index=2";
     TEST_ASSERT(!client.writeRecord(rec));
     TEST_ASSERT(!client.canSendRequest());
-    TEST_ASSERTM(client._retryTime == 4, String(client._retryTime));
-    TEST_ASSERTM(client._writeBuffer[0]->retryCount == 2, String(client._writeBuffer[0]->retryCount));
+    TEST_ASSERTM(client._retryTime == 4, std::to_string(client._retryTime));
+    TEST_ASSERTM(client._writeBuffer[0]->retryCount == 2, std::to_string(client._writeBuffer[0]->retryCount));
     delay(4000);
     rec = "test1,SSID=bonitoo.io,device_name=ESP32,device_id=4272205360 temperature=28.60,humidity=86i,code=69i,door=false,status=\"failed\",index=3";
     TEST_ASSERT(!client.writeRecord(rec));
     TEST_ASSERT(!client.canSendRequest());
-    TEST_ASSERTM(client._retryTime == 8, String(client._retryTime));
-    TEST_ASSERTM(client._writeBuffer[0]->retryCount == 3, String(client._writeBuffer[0]->retryCount));
+    TEST_ASSERTM(client._retryTime == 8, std::to_string(client._retryTime));
+    TEST_ASSERTM(client._writeBuffer[0]->retryCount == 3, std::to_string(client._writeBuffer[0]->retryCount));
     delay(8000);
     rec = "test1,SSID=bonitoo.io,device_name=ESP32,device_id=4272205360 temperature=28.60,humidity=86i,code=69i,door=false,status=\"failed\",index=4";
     TEST_ASSERT(!client.writeRecord(rec));
     TEST_ASSERT(!client.canSendRequest());
-    TEST_ASSERTM(client._retryTime == 2, String(client._retryTime));
+    TEST_ASSERTM(client._retryTime == 2, std::to_string(client._retryTime));
     TEST_ASSERT(!client._writeBuffer[0]);
-    TEST_ASSERTM(client._writeBuffer[1]->retryCount == 0, String(client._writeBuffer[1]->retryCount));
+    TEST_ASSERTM(client._writeBuffer[1]->retryCount == 0, std::to_string(client._writeBuffer[1]->retryCount));
 
     delay(2000);
     rec = "test1,SSID=bonitoo.io,device_name=ESP32,device_id=4272205360 temperature=28.60,humidity=86i,code=69i,door=false,status=\"failed\",index=5";
     TEST_ASSERT(!client.writeRecord(rec));
     TEST_ASSERT(!client.canSendRequest());
-    TEST_ASSERTM(client._retryTime == 2, String(client._retryTime));
+    TEST_ASSERTM(client._retryTime == 2, std::to_string(client._retryTime));
     TEST_ASSERT(!client._writeBuffer[0]);
-    TEST_ASSERTM(client._writeBuffer[1]->retryCount == 1, String(client._writeBuffer[1]->retryCount));
+    TEST_ASSERTM(client._writeBuffer[1]->retryCount == 1, std::to_string(client._writeBuffer[1]->retryCount));
 
     delay(2000);
     TEST_ASSERT(client.canSendRequest());
     TEST_ASSERTM(client.flushBuffer(), client.getLastErrorMessage());
     TEST_ASSERT(client.isBufferEmpty());
     TEST_ASSERT(!client.isBufferFull());
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = client.query(query);
     TEST_ASSERT(countLines(q) == 3); //point with the direction tag is skipped
     TEST_ASSERTM(q.getError()=="", q.getError()); 
@@ -2278,28 +2250,28 @@ void Test::testDefaultTags() {
     Point pt("test");
     pt.addTag("tag1", "tagvalue");
     pt.addField("fieldInt", -23);
-    String testLine = "test,tag1=tagvalue fieldInt=-23i";
-    String line = client.pointToLineProtocol(pt);
+    std::string testLine = "test,tag1=tagvalue fieldInt=-23i";
+    std::string line = client.pointToLineProtocol(pt);
     TEST_ASSERTM(line == testLine, line);
 
     
     
     TEST_ASSERT(waitServer(Test::managementUrl, true));
     for (int i = 0; i < 5; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERT(client.writePoint(*p));
-        delete p;
+        TEST_ASSERT(client.writePoint(*p.get()));
+        
     }
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = client.query(query);
     TEST_ASSERTM(q.getError()=="", q.getError());
     TEST_ASSERT(q.next());
-    TEST_ASSERTM(q.getColumnsName().size()==10,String(q.getColumnsName().size()));
+    TEST_ASSERTM(q.getColumnsName().size()==10, std::to_string(q.getColumnsName().size()));
     TEST_ASSERT(q.next());
     TEST_ASSERT(q.next());
     TEST_ASSERT(q.next());
-    TEST_ASSERTM(q.getColumnsName().size()==10,String(q.getColumnsName().size())) ;
+    TEST_ASSERTM(q.getColumnsName().size()==10, std::to_string(q.getColumnsName().size())) ;
     TEST_ASSERT(q.next());
     TEST_ASSERT(!q.next());
     q.close();
@@ -2311,15 +2283,15 @@ void Test::testDefaultTags() {
     TEST_ASSERTM(line == testLine, line);
 
     for (int i = 0; i < 5; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERT(client.writePoint(*p));
-        delete p;
+        TEST_ASSERT(client.writePoint(*p.get()));
+        
     }
     q = client.query(query);
     TEST_ASSERTM(q.getError()=="", q.getError());
     TEST_ASSERT(q.next());
-    TEST_ASSERTM(q.getColumnsName().size()==12,String(q.getColumnsName().size()));
+    TEST_ASSERTM(q.getColumnsName().size()==12, std::to_string(q.getColumnsName().size()));
     TEST_ASSERTM(q.getValueByName("dtag1").getString() == "dval1", q.getValueByName("dtag1").getString());
     TEST_ASSERTM(q.getValueByName("dtag2").getString() == "dval2", q.getValueByName("dtag2").getString());
     TEST_ASSERT(q.next());
@@ -2329,7 +2301,7 @@ void Test::testDefaultTags() {
     TEST_ASSERTM(q.getValueByName("dtag1").getString() == "dval1",q.getValueByName("dtag1").getString());
     TEST_ASSERTM(q.getValueByName("dtag2").getString() == "dval2", q.getValueByName("dtag2").getString());
     TEST_ASSERT(q.next());
-    TEST_ASSERTM(q.getColumnsName().size()==12,String(q.getColumnsName().size())) ;
+    TEST_ASSERTM(q.getColumnsName().size()==12, std::to_string(q.getColumnsName().size())) ;
     TEST_ASSERTM(q.getValueByName("dtag1").getString() == "dval1",q.getValueByName("dtag1").getString());
     TEST_ASSERTM(q.getValueByName("dtag2").getString() == "dval2", q.getValueByName("dtag2").getString());
     TEST_ASSERT(q.next());
@@ -2344,8 +2316,8 @@ void Test::testDefaultTags() {
 
 void Test::testUrlEncode() {
     TEST_INIT("testUrlEncode");
-    String res = "my%20%5Bsecret%5D%20pass%3A%2F%5Cw%60o%5Er%25d";
-    String urlEnc = urlEncode("my [secret] pass:/\\w`o^r%d");
+    std::string res = "my%20%5Bsecret%5D%20pass%3A%2F%5Cw%60o%5Er%25d";
+    std::string urlEnc = urlEncode("my [secret] pass:/\\w`o^r%d");
     TEST_ASSERTM(res == urlEnc, urlEnc);
     TEST_END();
 }
@@ -2389,7 +2361,7 @@ void Test::testBuckets() {
     TEST_ASSERT(!emptybs.isNull());
     TEST_ASSERT(emptybs);
     TEST_ASSERT(waitServer(Test::managementUrl, true));
-    String id = buckets.getOrgID("my-org");
+    std::string id = buckets.getOrgID("my-org");
     TEST_ASSERTM( id == "e2e2d84ffb3c4f85", id.length()?id:buckets.getLastErrorMessage());
     id = buckets.getOrgID("org");
     TEST_ASSERT( id == "");
@@ -2399,13 +2371,13 @@ void Test::testBuckets() {
     TEST_ASSERTM(!b.isNull(), buckets.getLastErrorMessage());
     TEST_ASSERTM(isValidID(b.getID()), b.getID());
     TEST_ASSERTM(!strcmp(b.getName(), "bucket-1"), b.getName());
-    TEST_ASSERTM(b.getExpire() == 0, String(b.getExpire()));
+    TEST_ASSERTM(b.getExpire() == 0, std::to_string(b.getExpire()));
     emptyb = b;
     TEST_ASSERT(!emptyb.isNull());
     TEST_ASSERT(emptyb);
     TEST_ASSERTM(isValidID(emptyb.getID()), emptyb.getID());
     TEST_ASSERTM(!strcmp(emptyb.getName(), "bucket-1"), emptyb.getName());
-    TEST_ASSERTM(emptyb.getExpire() == 0, String(emptyb.getExpire()));
+    TEST_ASSERTM(emptyb.getExpire() == 0, std::to_string(emptyb.getExpire()));
 
     TEST_ASSERT(buckets.checkBucketExists("bucket-1"));
     TEST_ASSERT(buckets.deleteBucket(b.getID()));
@@ -2416,7 +2388,7 @@ void Test::testBuckets() {
     b = buckets.createBucket("bucket-2", monthSec);
     TEST_ASSERTM(!b.isNull(), buckets.getLastErrorMessage());
     TEST_ASSERT(buckets.checkBucketExists("bucket-2"));
-    TEST_ASSERTM(b.getExpire() == monthSec, String(b.getExpire()));
+    TEST_ASSERTM(b.getExpire() == monthSec, std::to_string(b.getExpire()));
     int len = 34 + strlen(b.getID()) + strlen(b.getName()) + 10 + 1; //10 is maximum length of string representation of expire
     char *line = new char[len];
     sprintf(line, "Bucket: ID %s, Name %s, expire %u", b.getID(),b.getName(), b.getExpire());
@@ -2426,7 +2398,7 @@ void Test::testBuckets() {
     Bucket b2 = buckets.createBucket("bucket-3", yearSec);
     TEST_ASSERTM(!b2.isNull(), buckets.getLastErrorMessage());
     TEST_ASSERT(buckets.checkBucketExists("bucket-3"));
-    TEST_ASSERTM(b2.getExpire() == yearSec, String(b2.getExpire()));
+    TEST_ASSERTM(b2.getExpire() == yearSec, std::to_string(b2.getExpire()));
 
     TEST_ASSERT(buckets.checkBucketExists("bucket-2"));
     TEST_ASSERT(buckets.deleteBucket(b.getID()));
@@ -2448,21 +2420,21 @@ void Test::testFlushing() {
     client.setWriteOptions(WriteOptions().batchSize(10).bufferSize(30).flushInterval(2));
 
     for (int i = 0; i < 5; i++) {
-        Point *p = createPoint("test1");
+        std::unique_ptr<Point> p{createPoint("test1")};
         p->addField("index", i);
-        TEST_ASSERT(client.writePoint(*p));
-        delete p;
+        TEST_ASSERT(client.writePoint(*p.get()));
+        
     }
     TEST_ASSERT(!client.isBufferFull());
     TEST_ASSERT(!client.isBufferEmpty());
     client.checkBuffer();
     TEST_ASSERT(!client.isBufferFull());
     TEST_ASSERT(!client.isBufferEmpty());
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = client.query(query);
     int count = countLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
-    TEST_ASSERTM( count == 0, String(count) + " vs 0");  //5 points
+    TEST_ASSERTM(count == 0, std::to_string(count) + " vs 0");  // 5 points
 
     delay(2100);
     client.checkBuffer();
@@ -2472,8 +2444,8 @@ void Test::testFlushing() {
     q = client.query(query);
     count = countLines(q);
     TEST_ASSERTM(q.getError()=="", q.getError());
-    TEST_ASSERTM( count == 5, String(count) + " vs 0");  //5 points
-    
+    TEST_ASSERTM(count == 5, std::to_string(count) + " vs 0");  // 5 points
+
     TEST_END();
     deleteAll(Test::apiUrl);
 }
@@ -2500,7 +2472,7 @@ void Test::testNonRetry() {
     };
     WriteOptions wo;
     WS_DEBUG_RAM("Before inst");
-    InfluxDBClient *client = new InfluxDBClient(Test::apiUrl, Test::orgName, Test::bucketName, Test::token);
+    std::unique_ptr<InfluxDBClient> client { new InfluxDBClient(Test::apiUrl, Test::orgName, Test::bucketName, Test::token) };
     WS_DEBUG_RAM("after inst");
 
     //TEST not keeping batch for retry
@@ -2530,7 +2502,7 @@ void Test::testNonRetry() {
     }
     TEST_ASSERTM(client->flushBuffer(), client->getLastErrorMessage());
     WS_DEBUG_RAM("After flush");
-    delete client;
+    client.reset(nullptr);
     WS_DEBUG_RAM("After delete");
     TEST_END();
     deleteAll(Test::apiUrl);
@@ -2571,12 +2543,12 @@ void Test::testLargeBatch() {
         yield();
     }
     WS_DEBUG_RAM("Data sent");
-    String query = "select";
+    std::string query = "select";
     FluxQueryResult q = client.query(query);
     int count = countLines(q);
     WS_DEBUG_RAM("After query");
     TEST_ASSERTM(q.getError()=="", q.getError());
-    TEST_ASSERTM( count == client._writeOptions._batchSize, String(count));  
+    TEST_ASSERTM( count == client._writeOptions._batchSize, std::to_string(count));  
     TEST_END();
     deleteAll(Test::apiUrl);
 }
@@ -2595,12 +2567,12 @@ void Test::testQueryWithParams() {
     params.add("dateTime", {15,34,9,22,4,120,0,0,0}, 12345);
     FluxQueryResult q = client.query("echo", params);
     TEST_ASSERT(!q.next());
-    TEST_ASSERTM(client.getLastStatusCode()==444,String(client.getLastStatusCode()));
+    TEST_ASSERTM(client.getLastStatusCode()==444, std::to_string(client.getLastStatusCode()));
     TEST_ASSERTM(q.getError() == "{\"type\":\"flux\",\"query\":\"echo\",\"dialect\":{\"annotations\":[\"datatype\"],\"dateTimeFormat\":\"RFC3339\",\"header\":true,\"delimiter\":\",\",\"commentPrefix\":\"#\"},\"params\":{\"long\":-12345,\"ulong\":12345,\"bool\":false,\"string\":\"my text\",\"double\":12345.6789,\"dateTime\":\"2020-05-22T09:34:15.012345Z\"}}", q.getError());
     TEST_END();
 }
 
-void Test::setServerUrl(InfluxDBClient &client, String serverUrl) {
+void Test::setServerUrl(InfluxDBClient &client, std::string serverUrl) {
     client._connInfo.serverUrl = serverUrl;
     client._service->_apiURL = serverUrl + "/api/v2/";
     client.setUrls();

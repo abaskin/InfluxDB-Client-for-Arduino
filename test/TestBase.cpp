@@ -2,12 +2,12 @@
 
 #if defined(ESP32)
 #include <WiFi.h>
-String chipId = String((unsigned long)ESP.getEfuseMac());
-String deviceName = "ESP32";
+std::string chipId { String((unsigned long)ESP.getEfuseMac()).c_str() };
+std::string deviceName { "ESP32" };
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
-String chipId = String(ESP.getChipId());
-String deviceName = "ESP8266";
+std::string chipId { String(ESP.getChipId()).c_str() };
+std::string deviceName { "ESP8266" };
 #endif
 
 const char * TestBase::managementUrl;
@@ -30,9 +30,9 @@ void TestBase::setup(const char * mgmtUrl, const char * apiUrl, const char *e2eA
     TestBase::token = token;
 }
 
-Point *TestBase::createPoint(const String &measurement) {
+Point *TestBase::createPoint(const std::string &measurement) {
     Point *point = new Point(measurement);
-    point->addTag("SSID", WiFi.SSID());
+    point->addTag("SSID", WiFi.SSID().c_str());
     point->addTag("device_name", deviceName);
     point->addTag("device_id", chipId);
     point->addField("temperature", random(-20, 40) * 1.1f);
@@ -43,7 +43,7 @@ Point *TestBase::createPoint(const String &measurement) {
     return point;
 }
 
-bool testAssertm(int line, bool state, const String &message) {
+bool testAssertm(int line, bool state, const std::string& message) {
   if(!state) {
     ++TestBase::failures;
     Serial.printf("Assert failure line %d%s%s\n", line, message.length()>0?": ":"",message.c_str());

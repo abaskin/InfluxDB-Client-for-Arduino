@@ -29,6 +29,9 @@
 
 #include <InfluxDbClient.h>
 #include <InfluxDbCloud.h>
+
+#include <string>
+
 #include "TestSupport.h"
 
 #define TEST_INIT(name)  int temp = failures;\
@@ -53,10 +56,10 @@ public:
     static int failures;
 public:
     static void setup(const char * mgmtUrl, const char * apiUrl, const char *e2eApiUrl, const char * orgName, const char * bucketName, const char * dbName, const char * token);
-    static Point *createPoint(const String &measurement);
+    static Point *createPoint(const std::string &measurement);
 };
 
-bool testAssertm(int line, bool state,const String &message);
+bool testAssertm(int line, bool state,const std::string& message);
 bool testAssert(int line, bool state);
 
 #endif //_E2E_TEST_H_

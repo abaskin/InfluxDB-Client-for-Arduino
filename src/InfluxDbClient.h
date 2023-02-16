@@ -42,6 +42,10 @@
 #error AxTLS does not work
 #endif
 
+#include <memory>
+#include <string>
+#include <vector>
+
 class Test;
 
 /**
@@ -58,20 +62,20 @@ class InfluxDBClient {
     // Creates InfluxDBClient instance for unsecured connection to InfluxDB 1
     // serverUrl - url of the InfluxDB 1 server (e.g. http://localhost:8086)
     // db - database name where to store or read data
-    InfluxDBClient(const String &serverUrl, const String &db);
+    InfluxDBClient(const std::string &serverUrl, const std::string &db);
     // Creates InfluxDBClient instance for unsecured connection
     // serverUrl - url of the InfluxDB 2 server (e.g. http://localhost:8086)
     // org - name of the organization, which bucket belongs to    
     // bucket - name of the bucket to write data into
     // authToken - InfluxDB 2 authorization token
-    InfluxDBClient(const String &serverUrl, const String &org, const String &bucket, const String &authToken);
+    InfluxDBClient(const std::string &serverUrl, const std::string &org, const std::string &bucket, const std::string &authToken);
     // Creates InfluxDBClient instance for secured connection
     // serverUrl - url of the InfluxDB 2 server (e.g. https://localhost:8086)
     // org - name of the organization, which bucket belongs to 
     // bucket - name of the bucket to write data into
     // authToken - InfluxDB 2 authorization token
     // certInfo - InfluxDB 2 server trusted certificate (or CA certificate) or certificate SHA1 fingerprint. Should be stored in PROGMEM.
-    InfluxDBClient(const String &serverUrl, const String &org, const String &bucket, const String &authToken, const char *certInfo);
+    InfluxDBClient(const std::string &serverUrl, const std::string &org, const std::string &bucket, const std::string &authToken, const char *certInfo);
     // Clears instance.
     ~InfluxDBClient();
     // Allows insecure connection by skiping server certificate validation. 
@@ -107,7 +111,7 @@ class InfluxDBClient {
     // bucket - name of the bucket to write data into
     // authToken - InfluxDB 2 authorization token
     // serverCert - Optional. InfluxDB 2 server trusted certificate (or CA certificate) or certificate SHA1 fingerprint.  Should be stored in PROGMEM. Only in case of https connection.
-    void setConnectionParams(const String &serverUrl, const String &org, const String &bucket, const String &authToken, const char *certInfo = nullptr);
+    void setConnectionParams(const std::string &serverUrl, const std::string &org, const std::string &bucket, const std::string &authToken, const char *certInfo = nullptr);
     // Sets parameters for connection to InfluxDB 1
     // Must be called before calling any method initiating a connection to server.
     // serverUrl - url of the InfluxDB server (e.g. http://localhost:8086)
@@ -115,15 +119,15 @@ class InfluxDBClient {
     // user - Optional. User name, in case of server requires authetication
     // password - Optional. User password, in case of server requires authetication
     // certInfo - Optional. InfluxDB server trusted certificate (or CA certificate) or certificate SHA1 fingerprint.  Should be stored in PROGMEM. Only in case of https connection.
-    void setConnectionParamsV1(const String &serverUrl, const String &db, const String &user = (const char *)nullptr, const String &password = (const char *)nullptr, const char *certInfo = nullptr);
+    void setConnectionParamsV1(const std::string &serverUrl, const std::string &db, const std::string &user = (const char *)nullptr, const std::string &password = (const char *)nullptr, const char *certInfo = nullptr);
     // Creates line protocol string from point data and optional default tags set in WriteOptions.
-    String pointToLineProtocol(const Point& point);
+    std::string pointToLineProtocol(const Point& point);
     // Validates connection parameters by conecting to server
     // Returns true if successful, false in case of any error
     bool validateConnection();
     // Writes record in InfluxDB line protocol format to write buffer.
     // Returns true if successful, false in case of any error 
-    bool writeRecord(const String &record);
+    bool writeRecord(const std::string &record);
     bool writeRecord(const char *record);
     // Writes record represented by Point to buffer
     // Returns true if successful, false in case of any error 
@@ -131,18 +135,18 @@ class InfluxDBClient {
     // Sends Flux query and returns FluxQueryResult object for subsequently reading flux query response.
     // Use FluxQueryResult::next() method to iterate over lines of the query result.
     // Always call of FluxQueryResult::close() when reading is finished. Check FluxQueryResult doc for more info.
-    FluxQueryResult query(const String &fluxQuery);
+    FluxQueryResult query(const std::string &fluxQuery);
     // Sends Flux query with params and returns FluxQueryResult object for subsequently reading flux query response.
     // Use FluxQueryResult::next() method to iterate over lines of the query result.
     // Always call of FluxQueryResult::close() when reading is finished. Check FluxQueryResult doc for more info.
-    FluxQueryResult query(const String &fluxQuery, QueryParams params);
+    FluxQueryResult query(const std::string &fluxQuery, QueryParams params);
     // Forces writing of all points in buffer, even the batch is not full.
     // Returns true if successful, false in case of any error 
     bool flushBuffer();
     // Returns true if points buffer is full. Usefull when server is overloaded and we may want increase period of write points or decrease number of points
     bool isBufferFull() const  { return _bufferCeiling == _writeBufferSize; };
     // Returns true if buffer is empty. Usefull when going to sleep and check if there is sth in write buffer (it can happens when batch size if bigger than 1). Call flushBuffer() then.
-    bool isBufferEmpty() const { return _bufferCeiling == 0 && !_writeBuffer[0]; };
+    bool isBufferEmpty() const { return _writeBuffer.empty(); };
     // Checks points buffer status and flushes if number of points reached batch size or flush interval runs out.
     // Returns true if successful, false in case of any error
     bool checkBuffer();
@@ -151,9 +155,9 @@ class InfluxDBClient {
     // Returns HTTP status of last request to server. Usefull for advanced handling of failures.
     int getLastStatusCode() const { return  _service?_service->getLastStatusCode():0;  }
     // Returns last response when operation failed
-    String getLastErrorMessage() const { return _connInfo.lastError; }
+    std::string getLastErrorMessage() const { return _connInfo.lastError; }
     // Returns server url
-    String getServerUrl() const { return _connInfo.serverUrl; }
+    std::string getServerUrl() const { return _connInfo.serverUrl; }
     // Check if it is possible to send write/query request to server. 
     // Returns true if write or query can be send, or false, if server is overloaded and retry strategy is applied.
     // Use getRemainingRetryTime() to get wait time in such case.
@@ -180,18 +184,18 @@ class InfluxDBClient {
         uint16_t _size = 0;
       public:
         uint16_t pointer = 0;
-        char **buffer = nullptr;
+        std::vector<std::string> buffer;
         uint8_t retryCount = 0;
         Batch(uint16_t size);
         ~Batch();
         bool append(const char *line);
-        char *createData();
+        std::string createData();
         void clear();
         bool isFull() const {
           return pointer == _size;
         }
         bool isEmpty() const {
-          return pointer == 0 && !buffer[0];
+          return pointer == 0 && buffer.empty();
         }
     };
     class BatchStreamer : public Stream {
@@ -224,11 +228,13 @@ class InfluxDBClient {
     };
     ConnectionInfo _connInfo;  
     // Cached full write url
-    String _writeUrl;
+    std::string _writeUrl;
     // Cached full query url
-    String _queryUrl;
+    std::string _queryUrl;
     // Points buffer
-    Batch **_writeBuffer = nullptr;
+    std::vector<std::unique_ptr<Batch>> _writeBuffer;
+    // Index of batch start for next write
+    size_t _batchPointer{ 0 };
     // Batch buffer size
     uint8_t _writeBufferSize;
     // Write options
@@ -236,13 +242,11 @@ class InfluxDBClient {
     // Store retry timeout suggested by server or computed
     int _retryTime = 0; 
     // HTTP operations object
-    HTTPService *_service = nullptr;
+    std::unique_ptr<HTTPService> _service;
     // Index to buffer where to store new batch
     uint8_t _bufferPointer = 0;
     // Actual count of batches in buffer 
     uint8_t _bufferCeiling = 0;
-    // Index of bath start for next write
-    uint8_t _batchPointer = 0;
     // Last time in sec buffer has been successfully flushed
     uint32_t _lastFlushed;
     // Bucket sub-client

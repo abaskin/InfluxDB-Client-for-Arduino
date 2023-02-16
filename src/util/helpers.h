@@ -28,7 +28,9 @@
 #define _INFLUXDB_CLIENT_HELPERS_H
 
 #include <Arduino.h>
-#include <sys/time.h>  
+#include <memory>
+#include <sys/time.h>
+#include <string>
 
 // Synchronize time with NTP servers and waits for completition. Prints waiting progress and final synchronized time to the serial.
 // Accurate time is necessary for certificate validion and writing points in batch
@@ -38,16 +40,16 @@ void timeSync(const char *tzInfo, const char* ntpServer1, const char* ntpServer2
 // Create timestamp in offset from epoch. secFracDigits specify resulution. 0 - seconds, 3 - milliseconds, etc. Maximum and default is 9 - nanoseconds.
 unsigned long long getTimeStamp(struct timeval *tv, int secFracDigits = 3);
 
-// Converts unsigned long long timestamp to String
-char *timeStampToString(unsigned long long timestamp, int extraCharsSpace = 0);
+// Converts unsigned long long timestamp to std::string
+std::string timeStampToString(unsigned long long timestamp, int extraCharsSpace = 0);
 
 // Escape invalid chars in measurement, tag key, tag value and field key
-char *escapeKey(const String &key, bool escapeEqual = true);
+std::string escapeKey(const std::string &key, bool escapeEqual = true);
 
 // Escape invalid chars in field value
-String escapeValue(const char *value);
+std::string escapeValue(const char *value);
 // Encode URL string for invalid chars
-String urlEncode(const char* src);
+std::string urlEncode(const char* src);
 // Returns true of string contains valid InfluxDB ID type
 bool isValidID(const char *idString);
 // Returns "true" if val is true, otherwise "false"
@@ -59,5 +61,8 @@ char *cloneStr(const char *str);
 // Like strlen, but accepts nullptr
 size_t strLen(const char *str);
 
+bool endsWith(std::string str, std::string suffix);
+bool startsWith(std::string str, std::string suffix);
+void trim(std::string &str);
 
 #endif //_INFLUXDB_CLIENT_HELPERS_H

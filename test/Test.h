@@ -35,7 +35,7 @@ class Test : public  TestBase {
 public:
     static void run();
 private: //helpers
-    static void setServerUrl(InfluxDBClient &client, String serverUrl);
+    static void setServerUrl(InfluxDBClient &client, std::string serverUrl);
 private: // tests
     static void testUtils();
     static void testOptions();

@@ -36,8 +36,10 @@
 #else
 # error "This library currently supports only ESP8266 and ESP32."
 #endif
-#include "Options.h"
+#include <memory>
+#include <string>
 
+#include "Options.h"
 
 class Test;
 typedef std::function<bool(HTTPClient *client)> httpResponseCallback;
@@ -45,23 +47,23 @@ extern const char *TransferEncoding;
 
 struct ConnectionInfo {
     // Connection info
-    String serverUrl;
+    std::string serverUrl;
     // Write & query targets
-    String bucket;
-    String org;
+    std::string bucket;
+    std::string org;
     // v2 authetication token
-    String authToken;
+    std::string authToken;
     // Version of InfluxDB 1 or 2
     uint8_t dbVersion;
     // V1 user authetication
-    String user;
-    String password;
+    std::string user;
+    std::string password;
     // Certificate info
     const char *certInfo; 
     // flag if https should ignore cert validation
     bool insecure;
     // Error message of last failed operation
-    String lastError;
+    std::string lastError;
 };
 
 /**
@@ -74,18 +76,18 @@ friend class Test;
     // Connection info data
     ConnectionInfo *_pConnInfo;    
     // Server API URL
-    String _apiURL;
+    std::string _apiURL;
     // Last time in ms we made are a request to server
     uint32_t _lastRequestTime = 0;
     // HTTP status code of last request to server
     int _lastStatusCode = 0;
     // Underlying HTTPClient instance 
-    HTTPClient *_httpClient = nullptr;
-    // Underlying connection object 
-    WiFiClient *_wifiClient = nullptr;
+    std::unique_ptr<HTTPClient> _httpClient;
+    // Underlying connection object
+    std::unique_ptr<WiFiClient> _wifiClient;
 #ifdef  ESP8266
     // Trusted cert chain
-    BearSSL::X509List *_cert = nullptr;   
+    std::unique_ptr<BearSSL::X509List> _cert;
 #endif
     // Store retry timeout suggested by server after last request
     int _lastRetryAfter = 0;     
@@ -120,7 +122,7 @@ public:
     // Performs HTTP DELETE. On success calls response call back    
     bool doDELETE(const char *url, int expectedCode, httpResponseCallback cb);
     // Returns InfluxDBServer API URL
-    String getServerAPIURL() const { return _apiURL; }
+    std::string getServerAPIURL() const { return _apiURL; }
     // Returns value of the Retry-After HTTP header from recent call. 0 if it was missing.
     int getLastRetryAfter() const { return _lastRetryAfter; }
     // Returns HTTP status code of recent call.
@@ -128,7 +130,7 @@ public:
     // Returns time of recent call successful call.
     uint32_t getLastRequestTime() const { return _lastRequestTime; }
     // Returns response of last failed call.
-    String getLastErrorMessage() const { return _pConnInfo->lastError; }
+    std::string getLastErrorMessage() const { return _pConnInfo->lastError; }
     // Returns true if HTTP connection is kept open
     bool isConnected() const { return _httpClient && _httpClient->connected(); }
 };

@@ -31,15 +31,15 @@
 
 class Influxdb : public InfluxDBClient {
  public:
-  Influxdb(String host, uint16_t port = 8086);
+  Influxdb(std::string host, uint16_t port = 8086);
 
-  void setDb(String db);
-  void setDbAuth(String db, String user, String pass);
+  void setDb(std::string db);
+  void setDbAuth(std::string db, std::string user, std::string pass);
 
   void setVersion(uint16_t version);
-  void setBucket(String bucket);
-  void setOrg(String org);
-  void setToken(String token);
+  void setBucket(std::string bucket);
+  void setOrg(std::string org);
+  void setToken(std::string token);
   void setPort(uint16_t port);
 #if defined(ESP8266)
   void setFingerPrint(const char *fingerPrint);
@@ -49,7 +49,7 @@ class Influxdb : public InfluxDBClient {
   boolean write();
 
   boolean write(InfluxData data);
-  boolean write(String data);
+  boolean write(std::string data);
 
  private:
   uint16_t _preparedPoints;

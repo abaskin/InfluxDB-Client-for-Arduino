@@ -29,6 +29,8 @@
 
 #include "WritePrecision.h"
 
+#include <string>
+
 class InfluxDBClient;
 class HTTPService;
 class Influxdb;
@@ -63,7 +65,7 @@ private:
     uint16_t _maxRetryAttempts;
     // Default tags. Default tags are added to every written point. 
     // There cannot be the same tags in the default tags and among the tags included with a point.
-    String _defaultTags;
+    std::string _defaultTags;
     //  Let server assign timestamp in given precision. Do not sent timestamp.
     bool _useServerTimestamp;
 public:
@@ -96,7 +98,7 @@ public:
     WriteOptions& maxRetryAttempts(uint16_t maxRetryAttempts) { _maxRetryAttempts = maxRetryAttempts; return *this; }
     // Adds new default tag. Default tags are added to every written point. 
     // There cannot be the same tag in the default tags and in the tags included with a point.
-    WriteOptions& addDefaultTag(const String &name, const String &value);
+    WriteOptions& addDefaultTag(const std::string &name, const std::string &value);
     // Clears default tag list
     WriteOptions& clearDefaultTags() { _defaultTags = (char *)nullptr; return *this; }
     // If timestamp precision is set and useServerTimestamp  is true, timestamp from point is not sent, or assigned.

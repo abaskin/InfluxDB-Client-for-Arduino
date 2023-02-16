@@ -36,30 +36,32 @@
 
 #include "query/FluxParser.h"
 
+#include <vector>
+
 void printFreeHeap();
 
-int httpPOST(const String &url, String mess);
+int httpPOST(const std::string &url, std::string mess);
 
-int httpGET(const String &url);
+int httpGET(const std::string &url);
 
-bool deleteAll(const String &url) ;
+bool deleteAll(const std::string &url) ;
 
-bool serverLog(const String &url, String mess);
+bool serverLog(const std::string &url, std::string mess);
 
-bool isServerUp(const String &url);
+bool isServerUp(const std::string &url);
 
 
-int countParts(const String &str, char separator);
+int countParts(const std::string &str, char separator);
 
-String *getParts(const String &str, char separator, int &count);
+std::vector<std::string> getParts(const std::string &str, char separator);
 
 int countLines(FluxQueryResult flux) ;
 
-std::vector<String> getLines(FluxQueryResult flux);
+std::vector<std::string> getLines(FluxQueryResult flux);
 
 
 bool compareTm(tm &tm1, tm &tm2);
 // Waits for server in desired state (up - true, down - false)
-bool waitServer(const String &url, bool state);
+bool waitServer(const std::string &url, bool state);
 
 #endif //_TEST_SUPPORT_H_

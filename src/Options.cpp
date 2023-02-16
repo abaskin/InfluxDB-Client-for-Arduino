@@ -28,16 +28,14 @@
 #include "Options.h"
 #include "util/helpers.h"
 
-WriteOptions& WriteOptions::addDefaultTag(const String &name, const String &value) { 
+WriteOptions& WriteOptions::addDefaultTag(const std::string &name, const std::string &value) { 
     if(_defaultTags.length() > 0) {
         _defaultTags += ',';
     }
-    char *s = escapeKey(name);
+    auto s = escapeKey(name);
     _defaultTags += s;
-    delete [] s;
     s = escapeKey(value);
     _defaultTags += '=';
     _defaultTags += s;
-    delete [] s;
     return *this; 
 }

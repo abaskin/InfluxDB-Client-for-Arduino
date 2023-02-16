@@ -27,6 +27,7 @@
 
 #include "Params.h"
 #include <algorithm>
+#include <memory>
 
 QueryParams::QueryParams() {
   _data = std::make_shared<ParamsList>();
@@ -39,7 +40,6 @@ QueryParams::QueryParams(const QueryParams& other) {
 
  QueryParams::~QueryParams() {
    if(_data) {
-    std::for_each(_data->begin(), _data->end(), [](FluxBase *&value){ delete value; });
     _data->clear();
    }
  }
@@ -51,83 +51,88 @@ QueryParams &QueryParams::operator=(const QueryParams &other) {
   return *this;
 }
 
-QueryParams &QueryParams::add(const String &name, float value, int decimalPlaces) {
+QueryParams &QueryParams::add(const std::string &name, float value, int decimalPlaces) {
   return add(name, (double)value, decimalPlaces);
 }
 
-QueryParams &QueryParams::add(const String &name, double value, int decimalPlaces) {
+QueryParams &QueryParams::add(const std::string &name, double value, int decimalPlaces) {
   return add(new FluxDouble(name, value, decimalPlaces));
 }
 
-QueryParams &QueryParams::add(const String &name, char value) {
-  String s(value);
+QueryParams &QueryParams::add(const std::string &name, char value) {
+  std::string s{value};
   return add(name, s);
 }
 
-QueryParams &QueryParams::add(const String &name, unsigned char value) {
+QueryParams &QueryParams::add(const std::string &name, unsigned char value) {
   return add(name, (unsigned long)value);
 }
 
-QueryParams &QueryParams::add(const String &name, int value) {
+QueryParams &QueryParams::add(const std::string &name, int value) {
   return add(name,(long)value);
 }
 
-QueryParams &QueryParams::add(const String &name, unsigned int value) {
+QueryParams &QueryParams::add(const std::string &name, unsigned int value) {
   return add(name,(unsigned long)value);
 }
 
-QueryParams &QueryParams::add(const String &name, long value) {
+QueryParams &QueryParams::add(const std::string &name, long value) {
     return add(new FluxLong(name, value));
 }
 
-QueryParams &QueryParams::add(const String &name, unsigned long value) {
+QueryParams &QueryParams::add(const std::string &name, unsigned long value) {
   return add(new FluxUnsignedLong(name, value));
 }
 
-QueryParams &QueryParams::add(const String &name, bool value) {
+QueryParams &QueryParams::add(const std::string &name, bool value) {
   return add(new FluxBool(name, value));
 }
 
-QueryParams &QueryParams::add(const String &name, const String &value) {
+QueryParams &QueryParams::add(const std::string &name, const std::string &value) {
   return add(name, value.c_str());
 }
 
-QueryParams &QueryParams::add(const String &name, const __FlashStringHelper *pstr) {
-  return add(name, String(pstr));
+QueryParams &QueryParams::add(const std::string &name, const __FlashStringHelper *pstr) {
+  std::unique_ptr<char[]> buff{ new char[strlen_P((PGM_P)pstr) + 1]};
+  strcpy_P(buff.get(), (PGM_P)pstr);
+  return add(name, buff.get());
 }
 
-QueryParams &QueryParams::add(const String &name, long long value)  {
+QueryParams &QueryParams::add(const std::string &name, long long value)  {
   return add(name,(long)value);
 }
 
-QueryParams &QueryParams::add(const String &name, unsigned long long value) {
+QueryParams &QueryParams::add(const std::string &name, unsigned long long value) {
   return add(name,(unsigned long)value);
 }
 
-QueryParams &QueryParams::add(const String &name, const char *value) {
+QueryParams &QueryParams::add(const std::string &name, const char *value) {
   return add(new FluxString(name, value, FluxDatatypeString));
 }
 
-QueryParams &QueryParams::add(const String &name, struct tm tm, unsigned long micros ) {
+QueryParams &QueryParams::add(const std::string &name, struct tm tm, unsigned long micros ) {
   return add(new FluxDateTime(name, FluxDatatypeDatetimeRFC3339Nano, tm, micros));
 }
 
 QueryParams &QueryParams::add(FluxBase *value) {
  if(_data) {
-    _data->push_back(value);
+    _data->emplace_back(value);
   }
   return *this;
 }
 
-void QueryParams::remove(const String &name) {
+void QueryParams::remove(const std::string &name) {
   if(_data) {
-    auto it = std::find_if(_data->begin(),_data->end(), [name](FluxBase *f){ return f->getRawValue() == name; } );
+    const auto& it = std::find_if(_data->begin(), _data->end(),
+      [name](std::unique_ptr<FluxBase>& f) {
+        return f->getRawValue() == name;
+      });
     if(it != _data->end()) {
-      delete *it;
       _data->erase(it);
     }
   }
 }
+
 // Copy constructor
 int QueryParams::size() {
   if(_data) {
@@ -138,14 +143,14 @@ int QueryParams::size() {
 
 FluxBase *QueryParams::get(int i) {
   if(_data) {
-    return _data->at(i);
+    return _data->at(i).get();
   }
   return 0;
 }
 
-char *QueryParams::jsonString(int i) {
+std::string QueryParams::jsonString(int i) {
   if(_data) {
     return _data->at(i)->jsonString();
   }
-  return nullptr;
+  return "";
 }
