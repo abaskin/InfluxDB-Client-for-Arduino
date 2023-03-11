@@ -29,13 +29,10 @@
 #include "util/helpers.h"
 
 WriteOptions& WriteOptions::addDefaultTag(const std::string &name, const std::string &value) { 
-    if(_defaultTags.length() > 0) {
-        _defaultTags += ',';
-    }
-    auto s = escapeKey(name);
-    _defaultTags += s;
-    s = escapeKey(value);
-    _defaultTags += '=';
-    _defaultTags += s;
+    escapeKey(_defaultTags, _defaultTags.length(), name);
+    _defaultTags.push_back('=');
+    escapeKey(_defaultTags, _defaultTags.length(), value);
+    _defaultTags.push_back(',');
+
     return *this; 
 }

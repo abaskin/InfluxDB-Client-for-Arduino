@@ -133,7 +133,7 @@ bool HTTPService::beforeRequest(const char *url) {
 }
 
 bool HTTPService::doPOST(const char *url, const char *data, const char *contentType, int expectedCode, httpResponseCallback cb) {
-  INFLUXDB_CLIENT_DEBUG("[D] POST request - %s, data: %dbytes, type %s\n", url, strlen(data), contentType);
+  INFLUXDB_CLIENT_DEBUG("[D] POST request - %s, data: %d bytes, type %s\n", url, strlen(data), contentType);
   if(!beforeRequest(url)) {
     return false;
   }
@@ -145,7 +145,7 @@ bool HTTPService::doPOST(const char *url, const char *data, const char *contentT
 }
 
 bool HTTPService::doPOST(const char *url, Stream *stream, const char *contentType, int expectedCode, httpResponseCallback cb) {
-  INFLUXDB_CLIENT_DEBUG("[D] POST request - %s, data: %dbytes, type %s\n", url, stream->available(), contentType);
+  INFLUXDB_CLIENT_DEBUG("[D] POST request - %s, data: %d bytes, type %s\n", url, stream->available(), contentType);
   if(!beforeRequest(url)) {
     return false;
   }
@@ -186,7 +186,7 @@ bool HTTPService::afterRequest(int expectedStatusCode, httpResponseCallback cb, 
             }
         }
     }
-    _pConnInfo->lastError = (char *)nullptr;
+    _pConnInfo->lastError.clear();
     bool ret = _lastStatusCode == expectedStatusCode;
     bool endConnection = true;
     if(!ret) {

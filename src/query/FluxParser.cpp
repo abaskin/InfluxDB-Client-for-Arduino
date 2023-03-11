@@ -118,7 +118,7 @@ bool FluxQueryResult::next() {
     ParsingState parsingState = ParsingStateNormal;
     _data->_tableChanged = false;
     clearValues();
-    _data->_error = "";
+    _data->_error.clear();
 readRow:
     bool stat = _data->_reader->next();
     if(!stat) {
@@ -135,13 +135,13 @@ readRow:
     }
     if(vals[0] == "") {
 		if (parsingState == ParsingStateError) {
-			std::string message ;
+			std::string message;
 			if (vals.size() > 1 && vals[1].length() > 0) {
 				message = vals[1];
 			} else {
 				message = "Unknown query error";
 			}
-			std::string reference = "";
+			std::string reference;
             if (vals.size() > 2 && vals[2].length() > 0) {
 				reference = "," + vals[2];
 			}

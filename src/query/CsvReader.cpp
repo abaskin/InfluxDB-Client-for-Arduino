@@ -43,7 +43,6 @@ void CsvReader::close() {
 }
 
 void CsvReader::clearRow() {
-    // std::for_each(_row.begin(), _row.end(), [](std::string &value){ value = (const char *)nullptr; });
     _row.clear();
 }
 

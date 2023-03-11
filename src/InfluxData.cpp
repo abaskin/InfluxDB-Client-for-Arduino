@@ -29,11 +29,9 @@
 
 void InfluxData::setTimestamp(long int seconds) 
 { 
-    _data->timestamp = timeStampToString(seconds,9);
-    _data->timestamp.append("000000000"); 
+    _data->setTime(timeStampToString(seconds,9) + "000000000");
 }
 
- std::string InfluxData::toString() const { 
-    std::string t; 
-    return createLineProtocol(t); 
+ const std::string& InfluxData::toString() {  
+    return createLineProtocol(""); 
 }

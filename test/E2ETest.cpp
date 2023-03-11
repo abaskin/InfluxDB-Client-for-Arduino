@@ -13,44 +13,44 @@ void E2ETest::run() {
 void E2ETest::testBuckets() {
     TEST_INIT("testBuckets");
     InfluxDBClient client(E2ETest::e2eApiUrl, E2ETest::orgName, E2ETest::bucketName, E2ETest::token);
-    BucketsClient buckets = client.getBucketsClient();
-    TEST_ASSERT(!buckets.isNull());
+    auto buckets = client.getBucketsClient();
+    TEST_ASSERT(!buckets->isNull());
     TEST_ASSERTM(client.validateConnection(),client.getLastErrorMessage());
-    std::string id = buckets.getOrgID("my-org");
-    TEST_ASSERTM( isValidID(id.c_str()), id.length()?id:buckets.getLastErrorMessage());
-    id = buckets.getOrgID("org");
+    std::string id = buckets->getOrgID("my-org");
+    TEST_ASSERTM( isValidID(id.c_str()), id.length()?id:buckets->getLastErrorMessage());
+    id = buckets->getOrgID("org");
     TEST_ASSERT( id == "");
-    TEST_ASSERT(buckets.checkBucketExists("my-bucket"));
+    TEST_ASSERT(buckets->checkBucketExists("my-bucket"));
 
-    TEST_ASSERT(!buckets.checkBucketExists("bucket-1"));
-    Bucket b = buckets.createBucket("bucket-1");
-    TEST_ASSERTM(!b.isNull(), buckets.getLastErrorMessage());
+    TEST_ASSERT(!buckets->checkBucketExists("bucket-1"));
+    Bucket b = buckets->createBucket("bucket-1");
+    TEST_ASSERTM(!b.isNull(), buckets->getLastErrorMessage());
     TEST_ASSERTM(isValidID(b.getID()), b.getID());
     TEST_ASSERTM(!strcmp(b.getName(), "bucket-1"), b.getName());
     TEST_ASSERTM(b.getExpire() == 0, std::to_string(b.getExpire()));
-    TEST_ASSERT(buckets.checkBucketExists("bucket-1"));
-    TEST_ASSERT(buckets.deleteBucket(b.getID()));;
-    TEST_ASSERT(!buckets.checkBucketExists("bucket-1"));
-    TEST_ASSERT(!buckets.deleteBucket("bucket-1"));
+    TEST_ASSERT(buckets->checkBucketExists("bucket-1"));
+    TEST_ASSERT(buckets->deleteBucket(b.getID()));;
+    TEST_ASSERT(!buckets->checkBucketExists("bucket-1"));
+    TEST_ASSERT(!buckets->deleteBucket("bucket-1"));
 
     uint32_t monthSec = 3600*24*30;
-    b = buckets.createBucket("bucket-2", monthSec);
-    TEST_ASSERTM(!b.isNull(), buckets.getLastErrorMessage());
-    TEST_ASSERT(buckets.checkBucketExists("bucket-2"));
+    b = buckets->createBucket("bucket-2", monthSec);
+    TEST_ASSERTM(!b.isNull(), buckets->getLastErrorMessage());
+    TEST_ASSERT(buckets->checkBucketExists("bucket-2"));
     TEST_ASSERTM(b.getExpire() == monthSec, std::to_string(b.getExpire()));
 
     uint32_t yearSec = 12*monthSec;
-    Bucket b2 = buckets.createBucket("bucket-3", yearSec);
-    TEST_ASSERTM(!b2.isNull(), buckets.getLastErrorMessage());
-    TEST_ASSERT(buckets.checkBucketExists("bucket-3"));
+    Bucket b2 = buckets->createBucket("bucket-3", yearSec);
+    TEST_ASSERTM(!b2.isNull(), buckets->getLastErrorMessage());
+    TEST_ASSERT(buckets->checkBucketExists("bucket-3"));
     TEST_ASSERTM(b2.getExpire() == yearSec, std::to_string(b2.getExpire()));
 
-    TEST_ASSERT(buckets.checkBucketExists("bucket-2"));
-    TEST_ASSERT(buckets.deleteBucket(b.getID()));
-    TEST_ASSERT(buckets.checkBucketExists("bucket-3"));
-    TEST_ASSERT(buckets.deleteBucket(b2.getID()));;
-    TEST_ASSERT(!buckets.checkBucketExists("bucket-3"));
-    TEST_ASSERT(!buckets.checkBucketExists("bucket-2"));
+    TEST_ASSERT(buckets->checkBucketExists("bucket-2"));
+    TEST_ASSERT(buckets->deleteBucket(b.getID()));
+    TEST_ASSERT(buckets->checkBucketExists("bucket-3"));
+    TEST_ASSERT(buckets->deleteBucket(b2.getID()));;
+    TEST_ASSERT(!buckets->checkBucketExists("bucket-3"));
+    TEST_ASSERT(!buckets->checkBucketExists("bucket-2"));
 
     TEST_END();
 }
@@ -65,16 +65,16 @@ void E2ETest::testWriteAndQuery() {
 
     TEST_ASSERTM(client.validateConnection(),client.getLastErrorMessage());
     time_t start = time(nullptr);
-    BucketsClient buckets = client.getBucketsClient();
-    TEST_ASSERT(!buckets.isNull());
-    Bucket t = buckets.findBucket(TestBucket);
+    auto buckets = client.getBucketsClient();
+    TEST_ASSERT(!buckets->isNull());
+    Bucket t = buckets->findBucket(TestBucket);
     if(!t.isNull()) {
         Serial.println(F("Bucket already exists, deleting."));
-        TEST_ASSERTM(buckets.deleteBucket(t.getID()), buckets.getLastErrorMessage());
+        TEST_ASSERTM(buckets->deleteBucket(t.getID()), buckets->getLastErrorMessage());
     }
-    TEST_ASSERT(!buckets.checkBucketExists(TestBucket));
-    Bucket b = buckets.createBucket(TestBucket);
-    TEST_ASSERTM(!b.isNull(), buckets.getLastErrorMessage());
+    TEST_ASSERT(!buckets->checkBucketExists(TestBucket));
+    Bucket b = buckets->createBucket(TestBucket);
+    TEST_ASSERTM(!b.isNull(), buckets->getLastErrorMessage());
 
     delay(1000);
     for (int i = 0; i < 5; i++) {
@@ -95,7 +95,7 @@ void E2ETest::testWriteAndQuery() {
     
     result.close();
 
-    TEST_ASSERT(buckets.deleteBucket(b.getID()));
+    TEST_ASSERT(buckets->deleteBucket(b.getID()));
 
 
     TEST_END();

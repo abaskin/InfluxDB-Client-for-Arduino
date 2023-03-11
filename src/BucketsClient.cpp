@@ -191,7 +191,7 @@ Bucket BucketsClient::createBucket(const char *bucketName, uint32_t expiresSec) 
     sprintf_P(body.get(), CreateBucketTemplate, bucketName, orgID.c_str(), expiresSec);
     std::string url = _data->pService->getServerAPIURL();
     url += "buckets";
-    INFLUXDB_CLIENT_DEBUG("[D] CreateBucket: url %s, body %s\n", url.c_str(), body);
+    INFLUXDB_CLIENT_DEBUG("[D] CreateBucket: url %s, body %s\n", url.c_str(), body.get());
     _data->pService->doPOST(url.c_str(), body.get(), "application/json", 201, [&b](HTTPClient *client){
       std::string resp = client->getString().c_str();
       std::string id = findProperty("id", resp);

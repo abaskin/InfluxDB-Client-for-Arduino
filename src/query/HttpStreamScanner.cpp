@@ -57,14 +57,14 @@ bool HttpStreamScanner::next() {
             _read += r;
             if(_lastChunkLine.length() > 0) { //fix broken line
                 _line = _lastChunkLine + _line;
-                _lastChunkLine = "";
+                _lastChunkLine.clear();
             }
         
         } 
         if(_chunkHeader && r == 2) { //empty line at the end of chunk
             //last line was complete so return
             _line  = _lastChunkLine;
-            _lastChunkLine = "";
+            _lastChunkLine.clear();
             return true;
         }
         if(_chunkHeader){
@@ -74,7 +74,7 @@ bool HttpStreamScanner::next() {
             _read = 0;
             if(_chunkLen == 0) { //last chunk
                 _error = 0;
-                _line = "";
+                _line.clear();
                 return false;
             } else {
                 continue;

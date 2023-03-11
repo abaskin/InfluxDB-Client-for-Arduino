@@ -33,5 +33,5 @@ class InfluxData : public Point {
   void addValue(const std::string &key, float value) { addField(key, value); }
   void addValueString(const std::string &key, std::string value) { addField(key, value); }
   void setTimestamp(long int seconds);
-  std::string toString() const;
+  const std::string& toString();
 };
