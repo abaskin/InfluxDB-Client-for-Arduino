@@ -155,7 +155,7 @@ class InfluxDBClient {
   // Creates line protocol string from point data and optional default tags set
   // in WriteOptions.
   const std::string &pointToLineProtocol(Point &point);
-  // Validates connection parameters by conecting to server
+  // Validates connection parameters by connecting to server
   // Returns true if successful, false in case of any error
   bool validateConnection();
   // Writes record in InfluxDB line protocol format to write buffer.
